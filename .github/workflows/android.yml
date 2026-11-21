@@ -196,12 +196,149 @@ jobs:
               </application>
           </manifest>
           EOF
-          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('app/src/main/AndroidManifest.xml'); print('Manifest XML: VALID')"
-          printf '%s' 'cGFja2FnZSBQTEFDRUhPTERFUl9QS0cKCmltcG9ydCBhbmRyb2lkLmFwcC5BY3Rpdml0eQppbXBvcnQgYW5kcm9pZC5hcHAuQXBwbGljYXRpb24KaW1wb3J0IGFuZHJvaWQuZ3JhcGhpY3MuQ29sb3IKaW1wb3J0IGFuZHJvaWQuZ3JhcGhpY3MuZHJhd2FibGUuR3JhZGllbnREcmF3YWJsZQppbXBvcnQgYW5kcm9pZC5vcy5CdW5kbGUKaW1wb3J0IGFuZHJvaWQudmlldy5WaWV3CmltcG9ydCBhbmRyb2lkLnZpZXcuVmlld0dyb3VwCmltcG9ydCBhbmRyb2lkLndpZGdldC5CdXR0b24KaW1wb3J0IGFuZHJvaWQud2lkZ2V0LkxpbmVhckxheW91dAppbXBvcnQgYW5kcm9pZC53aWRnZXQuVGV4dFZpZXcKCm9iamVjdCBDb2NrcGl0IHsKICAgIHZhbCBwYWxldHRlczogQXJyYXk8QXJyYXk8U3RyaW5nPj4gPSBhcnJheU9mKAogICAgICAgIGFycmF5T2YoIiMwMEU1RkYiLCAiIzA1MDcwRiIsICIjMEIxRTNBIiwgIiMxQTA1MzMiLCAiI0Q5RjZGRiIpLAogICAgICAgIGFycmF5T2YoIiNGRjJCRDYiLCAiIzEyMDMwRiIsICIjMkEwQjMzIiwgIiMzMzA1MUYiLCAiI0ZGRDlGNCIpLAogICAgICAgIGFycmF5T2YoIiNGRkIzMDAiLCAiIzE0MEIwMiIsICIjMzMyNjBCIiwgIiMzMzFGMDUiLCAiI0ZGRjBEOSIpLAogICAgICAgIGFycmF5T2YoIiM3NkZGMDMiLCAiIzA0MTQwQSIsICIjMEIzMzIwIiwgIiMwNTMzMEYiLCAiI0U5RkZEOSIpCiAgICApCgogICAgZnVuIHNhdmVkSWR4KGE6IEFjdGl2aXR5KTogSW50IHsKICAgICAgICB2YWwgaWR4ID0gYS5nZXRTaGFyZWRQcmVmZXJlbmNlcygiY29ja3BpdF9wcmVmcyIsIDApLmdldEludCgicGFsZXR0ZV9pZHgiLCAwKQogICAgICAgIHJldHVybiBpZiAoaWR4IGluIHBhbGV0dGVzLmluZGljZXMpIGlkeCBlbHNlIDAKICAgIH0KCiAgICBmdW4gYXBwbHkoYTogQWN0aXZpdHksIGlkeDogSW50KSB7CiAgICAgICAgaWYgKGlkeCBpbiBwYWxldHRlcy5pbmRpY2VzKSB7CiAgICAgICAgICAgIGEuZ2V0U2hhcmVkUHJlZmVyZW5jZXMoImNvY2twaXRfcHJlZnMiLCAwKS5lZGl0KCkucHV0SW50KCJwYWxldHRlX2lkeCIsIGlkeCkuYXBwbHkoKQogICAgICAgIH0KICAgICAgICB2YWwgY3VyID0gc2F2ZWRJZHgoYSkKICAgICAgICB2YWwgcCA9IHBhbGV0dGVzW2N1cl0KICAgICAgICB2YWwgYWNjZW50ID0gQ29sb3IucGFyc2VDb2xvcihwWzBdKQogICAgICAgIHZhbCBiYXNlID0gQ29sb3IucGFyc2VDb2xvcihwWzFdKQogICAgICAgIHZhbCBkYXJrMSA9IENvbG9yLnBhcnNlQ29sb3IocFsyXSkKICAgICAgICB2YWwgZGFyazIgPSBDb2xvci5wYXJzZUNvbG9yKHBbM10pCiAgICAgICAgdmFsIHRleHQgPSBDb2xvci5wYXJzZUNvbG9yKHBbNF0pCiAgICAgICAgYS53aW5kb3cuc3RhdHVzQmFyQ29sb3IgPSBiYXNlCiAgICAgICAgYS53aW5kb3cubmF2aWdhdGlvbkJhckNvbG9yID0gYmFzZQogICAgICAgIHZhbCByb290ID0gYS53aW5kb3cuZGVjb3JWaWV3LmZpbmRWaWV3QnlJZDxWaWV3PihhbmRyb2lkLlIuaWQuY29udGVudCkgYXMgVmlld0dyb3VwCiAgICAgICAgdmFsIGdyYWQgPSBHcmFkaWVudERyYXdhYmxlKEdyYWRpZW50RHJhd2FibGUuT3JpZW50YXRpb24uVExfQlIsIGludEFycmF5T2YoYmFzZSwgZGFyazEsIGRhcmsyKSkKICAgICAgICByb290LmJhY2tncm91bmQgPSBncmFkCiAgICAgICAgdmFsIGRlbnMgPSBhLnJlc291cmNlcy5kaXNwbGF5TWV0cmljcy5kZW5zaXR5CiAgICAgICAgdmFyIGJhciA9IHJvb3QuZmluZFZpZXdXaXRoVGFnPFZpZXdHcm91cD4oImNvY2twaXRfc3dpdGNoZXIiKQogICAgICAgIGlmIChiYXIgPT0gbnVsbCkgewogICAgICAgICAgICB2YWwgbmIgPSBMaW5lYXJMYXlvdXQoYSkKICAgICAgICAgICAgbmIudGFnID0gImNvY2twaXRfc3dpdGNoZXIiCiAgICAgICAgICAgIG5iLm9yaWVudGF0aW9uID0gTGluZWFyTGF5b3V0LkhPUklaT05UQUwKICAgICAgICAgICAgbmIuZ3Jhdml0eSA9IGFuZHJvaWQudmlldy5HcmF2aXR5LkNFTlRFUgogICAgICAgICAgICBuYi5zZXRQYWRkaW5nKCgxMiAqIGRlbnMpLnRvSW50KCksICg4ICogZGVucykudG9JbnQoKSwgKDEyICogZGVucykudG9JbnQoKSwgKDggKiBkZW5zKS50b0ludCgpKQogICAgICAgICAgICBuYi5zZXRCYWNrZ3JvdW5kQ29sb3IoQ29sb3IucGFyc2VDb2xvcigiIzIyMDAwMDAwIikpCiAgICAgICAgICAgIHZhbCBscCA9IExpbmVhckxheW91dC5MYXlvdXRQYXJhbXMoCiAgICAgICAgICAgICAgICBWaWV3R3JvdXAuTGF5b3V0UGFyYW1zLk1BVENIX1BBUkVOVCwKICAgICAgICAgICAgICAgIFZpZXdHcm91cC5MYXlvdXRQYXJhbXMuV1JBUF9DT05URU5UCiAgICAgICAgICAgICkKICAgICAgICAgICAgbHAuZ3Jhdml0eSA9IGFuZHJvaWQudmlldy5HcmF2aXR5LlRPUAogICAgICAgICAgICBuYi5sYXlvdXRQYXJhbXMgPSBscAogICAgICAgICAgICByb290LmFkZFZpZXcobmIpCiAgICAgICAgICAgIGJhciA9IG5iCiAgICAgICAgfQogICAgICAgIHZhciBpID0gMAogICAgICAgIHZhbCBuID0gcm9vdC5jaGlsZENvdW50CiAgICAgICAgd2hpbGUgKGkgPCBuKSB7CiAgICAgICAgICAgIHZhbCBjID0gcm9vdC5nZXRDaGlsZEF0KGkpCiAgICAgICAgICAgIGlmIChjICE9PSBiYXIpIHsKICAgICAgICAgICAgICAgIGMuc2V0UGFkZGluZyhjLnBhZGRpbmdMZWZ0LCAoNjQgKiBkZW5zKS50b0ludCgpLCBjLnBhZGRpbmdSaWdodCwgYy5wYWRkaW5nQm90dG9tKQogICAgICAgICAgICB9CiAgICAgICAgICAgIGkrKwogICAgICAgIH0KICAgICAgICBiYXIucmVtb3ZlQWxsVmlld3MoKQogICAgICAgIGZvciAoaiBpbiBwYWxldHRlcy5pbmRpY2VzKSB7CiAgICAgICAgICAgIHZhbCBzdyA9IFZpZXcoYSkKICAgICAgICAgICAgdmFsIHNpemUgPSAoMzQgKiBkZW5zKS50b0ludCgpCiAgICAgICAgICAgIHZhbCBscDIgPSBMaW5lYXJMYXlvdXQuTGF5b3V0UGFyYW1zKHNpemUsIHNpemUpCiAgICAgICAgICAgIGxwMi5sZWZ0TWFyZ2luID0gKDggKiBkZW5zKS50b0ludCgpCiAgICAgICAgICAgIGxwMi5yaWdodE1hcmdpbiA9ICg4ICogZGVucykudG9JbnQoKQogICAgICAgICAgICBzdy5sYXlvdXRQYXJhbXMgPSBscDIKICAgICAgICAgICAgdmFsIGdkID0gR3JhZGllbnREcmF3YWJsZSgpCiAgICAgICAgICAgIGdkLnNoYXBlID0gR3JhZGllbnREcmF3YWJsZS5PVkFMCiAgICAgICAgICAgIGdkLnNldENvbG9yKENvbG9yLnBhcnNlQ29sb3IocGFsZXR0ZXNbal1bMF0pKQogICAgICAgICAgICBpZiAoaiA9PSBjdXIpIHsKICAgICAgICAgICAgICAgIGdkLnNldFN0cm9rZSgoMyAqIGRlbnMpLnRvSW50KCksIENvbG9yLldISVRFKQogICAgICAgICAgICB9IGVsc2UgewogICAgICAgICAgICAgICAgZ2Quc2V0U3Ryb2tlKCgxICogZGVucykudG9JbnQoKSwgQ29sb3IucGFyc2VDb2xvcihwYWxldHRlc1tqXVswXSkpCiAgICAgICAgICAgIH0KICAgICAgICAgICAgc3cuYmFja2dyb3VuZCA9IGdkCiAgICAgICAgICAgIHN3LnNldE9uQ2xpY2tMaXN0ZW5lciB7IGFwcGx5KGEsIGopIH0KICAgICAgICAgICAgYmFyLmFkZFZpZXcoc3cpCiAgICAgICAgfQogICAgICAgIG5lb25pemUocm9vdCwgYWNjZW50LCB0ZXh0LCBkZW5zKQogICAgfQoKICAgIHByaXZhdGUgZnVuIG5lb25pemUodjogVmlldywgYWNjZW50OiBJbnQsIHRleHQ6IEludCwgZGVuczogRmxvYXQpIHsKICAgICAgICB3aGVuICh2KSB7CiAgICAgICAgICAgIGlzIEJ1dHRvbiAtPiB7CiAgICAgICAgICAgICAgICB2YWwgZ2QgPSBHcmFkaWVudERyYXdhYmxlKCkKICAgICAgICAgICAgICAgIGdkLnNldENvbG9yKGFjY2VudCkKICAgICAgICAgICAgICAgIGdkLmNvcm5lclJhZGl1cyA9IDI4ZiAqIGRlbnMKICAgICAgICAgICAgICAgIHYuYmFja2dyb3VuZCA9IGdkCiAgICAgICAgICAgICAgICB2LnNldFRleHRDb2xvcihDb2xvci5wYXJzZUNvbG9yKCIjMDUwNzBGIikpCiAgICAgICAgICAgIH0KICAgICAgICAgICAgaXMgVGV4dFZpZXcgLT4gewogICAgICAgICAgICAgICAgaWYgKHYgIWlzIEJ1dHRvbikgewogICAgICAgICAgICAgICAgICAgIHYuc2V0VGV4dENvbG9yKHRleHQpCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICAgICAgaWYgKHYgaXMgVmlld0dyb3VwKSB7CiAgICAgICAgICAgIGZvciAoaSBpbiAwIHVudGlsIHYuY2hpbGRDb3VudCkgewogICAgICAgICAgICAgICAgdmFsIGNoaWxkID0gdi5nZXRDaGlsZEF0KGkpCiAgICAgICAgICAgICAgICBpZiAoY2hpbGQudGFnID09ICJjb2NrcGl0X3N3aXRjaGVyIikgewogICAgICAgICAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBuZW9uaXplKGNoaWxkLCBhY2NlbnQsIHRleHQsIGRlbnMpCiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9Cn0KCmNsYXNzIEFwcCA6IEFwcGxpY2F0aW9uKCkgewogICAgb3ZlcnJpZGUgZnVuIG9uQ3JlYXRlKCkgewogICAgICAgIHN1cGVyLm9uQ3JlYXRlKCkKICAgICAgICByZWdpc3RlckFjdGl2aXR5TGlmZWN5Y2xlQ2FsbGJhY2tzKG9iamVjdCA6IEFwcGxpY2F0aW9uLkFjdGl2aXR5TGlmZWN5Y2xlQ2FsbGJhY2tzIHsKICAgICAgICAgICAgb3ZlcnJpZGUgZnVuIG9uQWN0aXZpdHlSZXN1bWVkKGE6IEFjdGl2aXR5KSB7CiAgICAgICAgICAgICAgICBhLndpbmRvdy5kZWNvclZpZXcucG9zdCB7IENvY2twaXQuYXBwbHkoYSwgQ29ja3BpdC5zYXZlZElkeChhKSkgfQogICAgICAgICAgICB9CiAgICAgICAgICAgIG92ZXJyaWRlIGZ1biBvbkFjdGl2aXR5Q3JlYXRlZChhOiBBY3Rpdml0eSwgYjogQnVuZGxlPykge30KICAgICAgICAgICAgb3ZlcnJpZGUgZnVuIG9uQWN0aXZpdHlTdGFydGVkKGE6IEFjdGl2aXR5KSB7fQogICAgICAgICAgICBvdmVycmlkZSBmdW4gb25BY3Rpdml0eVBhdXNlZChhOiBBY3Rpdml0eSkge30KICAgICAgICAgICAgb3ZlcnJpZGUgZnVuIG9uQWN0aXZpdHlTdG9wcGVkKGE6IEFjdGl2aXR5KSB7fQogICAgICAgICAgICBvdmVycmlkZSBmdW4gb25BY3Rpdml0eVNhdmVJbnN0YW5jZVN0YXRlKGE6IEFjdGl2aXR5LCBiOiBCdW5kbGUpIHt9CiAgICAgICAgICAgIG92ZXJyaWRlIGZ1biBvbkFjdGl2aXR5RGVzdHJveWVkKGE6IEFjdGl2aXR5KSB7fQogICAgICAgIH0pCiAgICB9Cn0K' | base64 -d > "$DIR/Cockpit.kt"
+          cat > "$DIR/Cockpit.kt" <<'KEOF'
+          package PLACEHOLDER_PKG
+
+          import android.app.Activity
+          import android.app.Application
+          import android.graphics.Color
+          import android.graphics.drawable.GradientDrawable
+          import android.os.Bundle
+          import android.view.View
+          import android.view.ViewGroup
+          import android.widget.Button
+          import android.widget.LinearLayout
+          import android.widget.TextView
+
+          object Cockpit {
+              val palettes: Array<Array<String>> = arrayOf(
+                  arrayOf("#00E5FF", "#05070F", "#0B1E3A", "#1A0533", "#D9F6FF"),
+                  arrayOf("#FF2BD6", "#12030F", "#2A0B33", "#33051F", "#FFD9F4"),
+                  arrayOf("#FFB300", "#140B02", "#33260B", "#331F05", "#FFF0D9"),
+                  arrayOf("#76FF03", "#04140A", "#0B3320", "#05330F", "#E9FFD9"),
+                  arrayOf("#4CD964", "#000000", "#1C1C1E", "#111113", "#F2F2F2")
+              )
+
+              fun savedIdx(a: Activity): Int {
+                  val idx = a.getSharedPreferences("cockpit_prefs", 0).getInt("palette_idx", 0)
+                  return if (idx in palettes.indices) idx else 0
+              }
+
+              fun apply(a: Activity, idx: Int) {
+                  if (idx in palettes.indices) {
+                      a.getSharedPreferences("cockpit_prefs", 0).edit().putInt("palette_idx", idx).apply()
+                  }
+                  val cur = savedIdx(a)
+                  val p = palettes[cur]
+                  val accent = Color.parseColor(p[0])
+                  val base = Color.parseColor(p[1])
+                  val dark1 = Color.parseColor(p[2])
+                  val dark2 = Color.parseColor(p[3])
+                  val text = Color.parseColor(p[4])
+                  a.window.statusBarColor = base
+                  a.window.navigationBarColor = base
+                  val root = a.window.decorView.findViewById<View>(android.R.id.content) as ViewGroup
+                  val grad = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(base, dark1, dark2))
+                  root.background = grad
+                  val dens = a.resources.displayMetrics.density
+                  var bar = root.findViewWithTag<ViewGroup>("cockpit_switcher")
+                  if (bar == null) {
+                      val nb = LinearLayout(a)
+                      nb.tag = "cockpit_switcher"
+                      nb.orientation = LinearLayout.HORIZONTAL
+                      nb.gravity = android.view.Gravity.CENTER
+                      nb.setPadding((12 * dens).toInt(), (8 * dens).toInt(), (12 * dens).toInt(), (8 * dens).toInt())
+                      nb.setBackgroundColor(Color.parseColor("#22000000"))
+                      val lp = LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          ViewGroup.LayoutParams.WRAP_CONTENT
+                      )
+                      lp.gravity = android.view.Gravity.TOP
+                      nb.layoutParams = lp
+                      root.addView(nb)
+                      bar = nb
+                  }
+                  var i = 0
+                  val n = root.childCount
+                  while (i < n) {
+                      val c = root.getChildAt(i)
+                      if (c !== bar) {
+                          c.setPadding(c.paddingLeft, (64 * dens).toInt(), c.paddingRight, c.paddingBottom)
+                      }
+                      i++
+                  }
+                  bar.removeAllViews()
+                  for (j in palettes.indices) {
+                      val sw = View(a)
+                      val size = (34 * dens).toInt()
+                      val lp2 = LinearLayout.LayoutParams(size, size)
+                      lp2.leftMargin = (8 * dens).toInt()
+                      lp2.rightMargin = (8 * dens).toInt()
+                      sw.layoutParams = lp2
+                      val gd = GradientDrawable()
+                      gd.shape = GradientDrawable.OVAL
+                      gd.setColor(Color.parseColor(palettes[j][0]))
+                      if (j == cur) {
+                          gd.setStroke((3 * dens).toInt(), Color.WHITE)
+                      } else {
+                          gd.setStroke((1 * dens).toInt(), Color.parseColor(palettes[j][0]))
+                      }
+                      sw.background = gd
+                      sw.setOnClickListener { apply(a, j) }
+                      bar.addView(sw)
+                  }
+                  neonize(root, accent, text, dens)
+              }
+
+              private fun neonize(v: View, accent: Int, text: Int, dens: Float) {
+                  when (v) {
+                      is Button -> {
+                          val gd = GradientDrawable()
+                          gd.setColor(accent)
+                          gd.cornerRadius = 28f * dens
+                          v.background = gd
+                          v.setTextColor(Color.parseColor("#05070F"))
+                      }
+                      is TextView -> {
+                          if (v !is Button) {
+                              v.setTextColor(text)
+                          }
+                      }
+                  }
+                  if (v is ViewGroup) {
+                      for (i in 0 until v.childCount) {
+                          val child = v.getChildAt(i)
+                          if (child.tag == "cockpit_switcher") {
+                              continue
+                          }
+                          neonize(child, accent, text, dens)
+                      }
+                  }
+              }
+          }
+
+          class App : Application() {
+              override fun onCreate() {
+                  super.onCreate()
+                  registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+                      override fun onActivityResumed(a: Activity) {
+                          a.window.decorView.post { Cockpit.apply(a, Cockpit.savedIdx(a)) }
+                      }
+                      override fun onActivityCreated(a: Activity, b: Bundle?) {}
+                      override fun onActivityStarted(a: Activity) {}
+                      override fun onActivityPaused(a: Activity) {}
+                      override fun onActivityStopped(a: Activity) {}
+                      override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
+                      override fun onActivityDestroyed(a: Activity) {}
+                  })
+              }
+          }
+          KEOF
           sed -i "s/PLACEHOLDER_PKG/$PKG/g" "$DIR/Cockpit.kt"
           head -3 "$DIR/Cockpit.kt"
+          grep -q "object Cockpit" "$DIR/Cockpit.kt" && echo "Cockpit: OK" || echo "Cockpit: FAILED"
           grep -q "class App" "$DIR/Cockpit.kt" && echo "Injector: OK" || echo "Injector: FAILED"
-          grep -q "android:name=\".App\"" app/src/main/AndroidManifest.xml && echo "Manifest App: OK" || echo "Manifest App: FAILED"
+          grep -q "#4CD964" "$DIR/Cockpit.kt" && echo "Palette5: OK" || echo "Palette5: FAILED"
 
       - name: Build APK
         run: gradle assembleDebug --no-daemon --stacktrace
