@@ -30,10 +30,8 @@ jobs:
           DIR=${PKG//./\/}
           mkdir -p "app/src/main/java/$DIR"
           mv -f *.kt "app/src/main/java/$DIR/" 2>/dev/null || true
-          mv -f AndroidManifest.xml app/src/main/AndroidManifest.xml 2>/dev/null || true
           mkdir -p app/src/main/res/values
           printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">Optimizer</string>\n</resources>\n' > app/src/main/res/values/strings.xml
-          sed -i -E 's/android:label="[^"]*"/android:label="Optimizer"/g' app/src/main/AndroidManifest.xml 2>/dev/null || true
           fi
           cat > app/build.gradle.kts <<'EOF'
           plugins {
@@ -171,60 +169,37 @@ jobs:
               </style>
           </resources>
           EOF
-          MF=app/src/main/AndroidManifest.xml
-          if [ ! -f "$MF" ]; then
-          echo "Manifest missing - generating from scratch"
-          cat > "$MF" <<'EOF'
+          echo "Generating manifest deterministically"
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
               <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
-              <application android:theme="@style/Theme.Optimizer" android:label="Optimizer" android:allowBackup="true">
-                  <activity android:name=".MainActivity" android:exported="true">
+              <application
+                  android:label="Optimizer"
+                  android:theme="@style/Theme.Optimizer"
+                  android:allowBackup="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
-                  <provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:multiprocess="false" android:enabled="true" android:exported="true" android:directBootAware="true"/>
+                  <provider
+                      android:name="rikka.shizuku.ShizukuProvider"
+                      android:authorities="${applicationId}.shizuku"
+                      android:multiprocess="false"
+                      android:enabled="true"
+                      android:exported="true"
+                      android:directBootAware="true"/>
               </application>
           </manifest>
           EOF
-          fi
-          sed -i 's/android:theme="[^"]*"//g' "$MF"
-          sed -i '0,/<application/s//<application android:theme="@style\/Theme.Optimizer" /' "$MF"
-          if ! grep -q "Theme.Optimizer" "$MF"; then
-          echo "Theme insert failed - regenerating manifest"
-          cat > "$MF" <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.INTERNET"/>
-              <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
-              <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
-              <application android:theme="@style/Theme.Optimizer" android:label="Optimizer" android:allowBackup="true">
-                  <activity android:name=".MainActivity" android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-                  <provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:multiprocess="false" android:enabled="true" android:exported="true" android:directBootAware="true"/>
-              </application>
-          </manifest>
-          EOF
-          fi
-          if ! grep -q "WRITE_SETTINGS" "$MF"; then
-          sed -i '/<manifest/a\    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>' "$MF"
-          fi
-          if ! grep -q "WRITE_SECURE_SETTINGS" "$MF"; then
-          sed -i '/<manifest/a\    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>' "$MF"
-          fi
-          if ! grep -q "ShizukuProvider" "$MF"; then
-          sed -i 's|</application>|<provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:multiprocess="false" android:enabled="true" android:exported="true" android:directBootAware="true"/>\n    </application>|' "$MF"
-          fi
-          grep -q "Theme.Optimizer" "$MF" && echo "Manifest theme: OK" || echo "Manifest theme: FAILED"
-          grep -q "WRITE_SETTINGS" "$MF" && echo "Permissions: OK" || echo "Permissions: FAILED"
+          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('app/src/main/AndroidManifest.xml'); print('Manifest XML: VALID')"
+          cat app/src/main/AndroidManifest.xml
           KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
           if [ -f "$KT" ] && grep -q "applyCockpitTheme" "$KT"; then
           echo "Theme already applied"
