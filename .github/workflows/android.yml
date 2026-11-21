@@ -33,7 +33,6 @@ jobs:
           mv -f AndroidManifest.xml app/src/main/AndroidManifest.xml 2>/dev/null || true
           mkdir -p app/src/main/res/values
           printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">Optimizer</string>\n</resources>\n' > app/src/main/res/values/strings.xml
-          sed -i -E 's/ ?android:(theme|icon|roundIcon)="[^"]*"//g' app/src/main/AndroidManifest.xml 2>/dev/null || true
           sed -i -E 's/android:label="[^"]*"/android:label="Optimizer"/g' app/src/main/AndroidManifest.xml 2>/dev/null || true
           fi
           cat > app/build.gradle.kts <<'EOF'
@@ -173,40 +172,48 @@ jobs:
           </resources>
           EOF
           MF=app/src/main/AndroidManifest.xml
-          if [ ! -f "$MF" ] || ! grep -q "Theme.Optimizer" "$MF"; then
-          echo "Generating manifest from scratch"
+          if [ ! -f "$MF" ]; then
+          echo "Manifest missing - generating from scratch"
           cat > "$MF" <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
               <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
-              <application
-                  android:label="Optimizer"
-                  android:theme="@style/Theme.Optimizer"
-                  android:allowBackup="true">
+              <application android:theme="@style/Theme.Optimizer" android:label="Optimizer" android:allowBackup="true">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
-                  <provider
-                      android:name="rikka.shizuku.ShizukuProvider"
-                      android:authorities="${applicationId}.shizuku"
-                      android:multiprocess="false"
-                      android:enabled="true"
-                      android:exported="true"
-                      android:directBootAware="true"/>
+                  <provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:multiprocess="false" android:enabled="true" android:exported="true" android:directBootAware="true"/>
               </application>
           </manifest>
           EOF
           fi
-          if [ -f "$MF" ]; then
           sed -i 's/android:theme="[^"]*"//g' "$MF"
-          sed -i '0,/<application>/s//<application android:theme="@style\/Theme.Optimizer">/' "$MF"
-          sed -i '0,/<application /s//<application android:theme="@style\/Theme.Optimizer" /' "$MF"
-          sed -i '0,/^<application$/s//<application android:theme="@style\/Theme.Optimizer"/' "$MF"
+          sed -i '0,/<application/s//<application android:theme="@style\/Theme.Optimizer" /' "$MF"
+          if ! grep -q "Theme.Optimizer" "$MF"; then
+          echo "Theme insert failed - regenerating manifest"
+          cat > "$MF" <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+              <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
+              <application android:theme="@style/Theme.Optimizer" android:label="Optimizer" android:allowBackup="true">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  <provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:multiprocess="false" android:enabled="true" android:exported="true" android:directBootAware="true"/>
+              </application>
+          </manifest>
+          EOF
+          fi
           if ! grep -q "WRITE_SETTINGS" "$MF"; then
           sed -i '/<manifest/a\    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>' "$MF"
           fi
@@ -216,54 +223,24 @@ jobs:
           if ! grep -q "ShizukuProvider" "$MF"; then
           sed -i 's|</application>|<provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:multiprocess="false" android:enabled="true" android:exported="true" android:directBootAware="true"/>\n    </application>|' "$MF"
           fi
-          fi
           grep -q "Theme.Optimizer" "$MF" && echo "Manifest theme: OK" || echo "Manifest theme: FAILED"
           grep -q "WRITE_SETTINGS" "$MF" && echo "Permissions: OK" || echo "Permissions: FAILED"
-          echo "=== Final manifest ==="
-          cat "$MF"
           KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
-          if [ -f "$KT" ] && ! grep -q "applyCockpitTheme" "$KT"; then
-          sed -i -E 's/^([[:space:]]*)(super\.onCreate$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
+          if [ -f "$KT" ] && grep -q "applyCockpitTheme" "$KT"; then
+          echo "Theme already applied"
+          elif [ -f "$KT" ]; then
+          sed -i -E 's/^([[:space:]]*)(super\.onCreate$.*)$/\1setTheme(R.style.Theme_Optimizer)\n\1\2/' "$KT"
+          sed -i -E 's/^([[:space:]]*)(setContentView$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
           if ! grep -q "applyCockpitTheme(this)" "$KT"; then
-          sed -i -E 's/^([[:space:]]*)(onCreate$savedInstanceState.*$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
+          sed -i -E 's/^([[:space:]]*)(super\.onCreate$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
           fi
-          printf '%s\n' '' >> "$KT"
-          printf '%s\n' 'private fun applyCockpitTheme(activity: android.app.Activity) {' >> "$KT"
-          printf '%s\n' '    val bg = android.graphics.Color.parseColor("#05070F")' >> "$KT"
-          printf '%s\n' '    val cyan = android.graphics.Color.parseColor("#00E5FF")' >> "$KT"
-          printf '%s\n' '    activity.window.statusBarColor = bg' >> "$KT"
-          printf '%s\n' '    activity.window.navigationBarColor = bg' >> "$KT"
-          printf '%s\n' '    val root = activity.window.decorView.findViewById<android.view.View>(android.R.id.content)' >> "$KT"
-          printf '%s\n' '    val grad = android.graphics.drawable.GradientDrawable(' >> "$KT"
-          printf '%s\n' '        android.graphics.drawable.GradientDrawable.Orientation.TL_BR,' >> "$KT"
-          printf '%s\n' '        intArrayOf(bg, android.graphics.Color.parseColor("#0B1E3A"), android.graphics.Color.parseColor("#1A0533"))' >> "$KT"
-          printf '%s\n' '    )' >> "$KT"
-          printf '%s\n' '    root.background = grad' >> "$KT"
-          printf '%s\n' '    neonizeTree(root, cyan)' >> "$KT"
-          printf '%s\n' '}' >> "$KT"
-          printf '%s\n' '' >> "$KT"
-          printf '%s\n' 'private fun neonizeTree(v: android.view.View, cyan: Int) {' >> "$KT"
-          printf '%s\n' '    when (v) {' >> "$KT"
-          printf '%s\n' '        is android.widget.Button -> {' >> "$KT"
-          printf '%s\n' '            v.backgroundTintList = android.content.res.ColorStateList.valueOf(cyan)' >> "$KT"
-          printf '%s\n' '            v.setTextColor(android.graphics.Color.parseColor("#05070F"))' >> "$KT"
-          printf '%s\n' '        }' >> "$KT"
-          printf '%s\n' '        is android.widget.TextView -> {' >> "$KT"
-          printf '%s\n' '            if (v !is android.widget.Button) {' >> "$KT"
-          printf '%s\n' '                v.setTextColor(android.graphics.Color.parseColor("#D9F6FF"))' >> "$KT"
-          printf '%s\n' '            }' >> "$KT"
-          printf '%s\n' '        }' >> "$KT"
-          printf '%s\n' '    }' >> "$KT"
-          printf '%s\n' '    if (v is android.view.ViewGroup) {' >> "$KT"
-          printf '%s\n' '        for (i in 0 until v.childCount) {' >> "$KT"
-          printf '%s\n' '            neonizeTree(v.getChildAt(i), cyan)' >> "$KT"
-          printf '%s\n' '        }' >> "$KT"
-          printf '%s\n' '    }' >> "$KT"
-          printf '%s\n' '}' >> "$KT"
+          printf '%s' 'cHJpdmF0ZSB2YWwgY29ja3BpdFBhbGV0dGVzOiBBcnJheTxBcnJheTxTdHJpbmc+PiA9IGFycmF5T2YoCiAgICBhcnJheU9mKCIjMDBFNUZGIiwgIiMwNTA3MEYiLCAiIzBCMUUzQSIsICIjMUEwNTMzIiwgIiNEOUY2RkYiKSwKICAgIGFycmF5T2YoIiNGRjJCRDYiLCAiIzEyMDMwRiIsICIjMkEwQjMzIiwgIiMzMzA1MUYiLCAiI0ZGRDlGNCIpLAogICAgYXJyYXlPZigiI0ZGQjMwMCIsICIjMTQwQjAyIiwgIiMzMzI2MEIiLCAiIzMzMUYwNSIsICIjRkZGMEQ5IiksCiAgICBhcnJheU9mKCIjNzZGRjAzIiwgIiMwNDE0MEEiLCAiIzBCMzMyMCIsICIjMDUzMzBGIiwgIiNFOUZGRDkiKQopCgpwcml2YXRlIGZ1biBjb2NrcGl0U2F2ZWRJZHgoYWN0aXZpdHk6IGFuZHJvaWQuYXBwLkFjdGl2aXR5KTogSW50IHsKICAgIHZhbCBpZHggPSBhY3Rpdml0eS5nZXRTaGFyZWRQcmVmZXJlbmNlcygiY29ja3BpdF9wcmVmcyIsIDApLmdldEludCgicGFsZXR0ZV9pZHgiLCAwKQogICAgcmV0dXJuIGlmIChpZHggaW4gY29ja3BpdFBhbGV0dGVzLmluZGljZXMpIGlkeCBlbHNlIDAKfQoKcHJpdmF0ZSBmdW4gYXBwbHlDb2NrcGl0VGhlbWUoYWN0aXZpdHk6IGFuZHJvaWQuYXBwLkFjdGl2aXR5KSB7CiAgICBhcHBseUNvY2twaXRUaGVtZShhY3Rpdml0eSwgY29ja3BpdFNhdmVkSWR4KGFjdGl2aXR5KSkKfQoKcHJpdmF0ZSBmdW4gYXBwbHlDb2NrcGl0VGhlbWUoYWN0aXZpdHk6IGFuZHJvaWQuYXBwLkFjdGl2aXR5LCBpZHg6IEludCkgewogICAgdmFsIHAgPSBjb2NrcGl0UGFsZXR0ZXNbaWR4XQogICAgYWN0aXZpdHkuZ2V0U2hhcmVkUHJlZmVyZW5jZXMoImNvY2twaXRfcHJlZnMiLCAwKS5lZGl0KCkucHV0SW50KCJwYWxldHRlX2lkeCIsIGlkeCkuYXBwbHkoKQogICAgdmFsIGFjY2VudCA9IGFuZHJvaWQuZ3JhcGhpY3MuQ29sb3IucGFyc2VDb2xvcihwWzBdKQogICAgdmFsIGJhc2UgPSBhbmRyb2lkLmdyYXBoaWNzLkNvbG9yLnBhcnNlQ29sb3IocFsxXSkKICAgIHZhbCBkYXJrMSA9IGFuZHJvaWQuZ3JhcGhpY3MuQ29sb3IucGFyc2VDb2xvcihwWzJdKQogICAgdmFsIGRhcmsyID0gYW5kcm9pZC5ncmFwaGljcy5Db2xvci5wYXJzZUNvbG9yKHBbM10pCiAgICB2YWwgdGV4dCA9IGFuZHJvaWQuZ3JhcGhpY3MuQ29sb3IucGFyc2VDb2xvcihwWzRdKQogICAgYWN0aXZpdHkud2luZG93LnN0YXR1c0JhckNvbG9yID0gYmFzZQogICAgYWN0aXZpdHkud2luZG93Lm5hdmlnYXRpb25CYXJDb2xvciA9IGJhc2UKICAgIHZhbCByb290ID0gYWN0aXZpdHkud2luZG93LmRlY29yVmlldy5maW5kVmlld0J5SWQ8YW5kcm9pZC52aWV3LlZpZXc+KGFuZHJvaWQuUi5pZC5jb250ZW50KSBhcyBhbmRyb2lkLnZpZXcuVmlld0dyb3VwCiAgICB2YWwgZ3JhZCA9IGFuZHJvaWQuZ3JhcGhpY3MuZHJhd2FibGUuR3JhZGllbnREcmF3YWJsZSgKICAgICAgICBhbmRyb2lkLmdyYXBoaWNzLmRyYXdhYmxlLkdyYWRpZW50RHJhd2FibGUuT3JpZW50YXRpb24uVExfQlIsCiAgICAgICAgaW50QXJyYXlPZihiYXNlLCBkYXJrMSwgZGFyazIpCiAgICApCiAgICByb290LmJhY2tncm91bmQgPSBncmFkCiAgICB2YWwgZGVucyA9IGFjdGl2aXR5LnJlc291cmNlcy5kaXNwbGF5TWV0cmljcy5kZW5zaXR5CiAgICB2YXIgYmFyID0gcm9vdC5maW5kVmlld1dpdGhUYWcoImNvY2twaXRfc3dpdGNoZXIiKSBhcyBhbmRyb2lkLnZpZXcuVmlld0dyb3VwPwogICAgaWYgKGJhciA9PSBudWxsKSB7CiAgICAgICAgdmFsIG5iID0gYW5kcm9pZC53aWRnZXQuTGluZWFyTGF5b3V0KGFjdGl2aXR5KQogICAgICAgIG5iLnRhZyA9ICJjb2NrcGl0X3N3aXRjaGVyIgogICAgICAgIG5iLm9yaWVudGF0aW9uID0gYW5kcm9pZC53aWRnZXQuTGluZWFyTGF5b3V0LkhPUklaT05UQUwKICAgICAgICBuYi5ncmF2aXR5ID0gYW5kcm9pZC52aWV3LkdyYXZpdHkuQ0VOVEVSCiAgICAgICAgbmIuc2V0UGFkZGluZygoMTIgKiBkZW5zKS50b0ludCgpLCAoOCAqIGRlbnMpLnRvSW50KCksICgxMiAqIGRlbnMpLnRvSW50KCksICg4ICogZGVucykudG9JbnQoKSkKICAgICAgICBuYi5zZXRCYWNrZ3JvdW5kQ29sb3IoYW5kcm9pZC5ncmFwaGljcy5Db2xvci5wYXJzZUNvbG9yKCIjMjIwMDAwMDAiKSkKICAgICAgICB2YWwgbHAgPSBhbmRyb2lkLndpZGdldC5GcmFtZUxheW91dC5MYXlvdXRQYXJhbXMoCiAgICAgICAgICAgIGFuZHJvaWQudmlldy5WaWV3R3JvdXAuTGF5b3V0UGFyYW1zLk1BVENIX1BBUkVOVCwKICAgICAgICAgICAgYW5kcm9pZC52aWV3LlZpZXdHcm91cC5MYXlvdXRQYXJhbXMuV1JBUF9DT05URU5UCiAgICAgICAgKQogICAgICAgIGxwLmdyYXZpdHkgPSBhbmRyb2lkLnZpZXcuR3Jhdml0eS5UT1AKICAgICAgICBuYi5sYXlvdXRQYXJhbXMgPSBscAogICAgICAgIHJvb3QuYWRkVmlldyhuYikKICAgICAgICBiYXIgPSBuYgogICAgfQogICAgZm9yIChpIGluIDAgdW50aWwgcm9vdC5jaGlsZENvdW50KSB7CiAgICAgICAgdmFsIGMgPSByb290LmdldENoaWxkQXQoaSkKICAgICAgICBpZiAoYyAhPT0gYmFyKSBjLnNldFBhZGRpbmcoYy5wYWRkaW5nTGVmdCwgKDY0ICogZGVucykudG9JbnQoKSwgYy5wYWRkaW5nUmlnaHQsIGMucGFkZGluZ0JvdHRvbSkKICAgIH0KICAgIGJhci5yZW1vdmVBbGxWaWV3cygpCiAgICBmb3IgKGkgaW4gY29ja3BpdFBhbGV0dGVzLmluZGljZXMpIHsKICAgICAgICB2YWwgc3cgPSBhbmRyb2lkLnZpZXcuVmlldyhhY3Rpdml0eSkKICAgICAgICB2YWwgc2l6ZSA9ICgzNCAqIGRlbnMpLnRvSW50KCkKICAgICAgICB2YWwgbHAyID0gYW5kcm9pZC53aWRnZXQuTGluZWFyTGF5b3V0LkxheW91dFBhcmFtcyhzaXplLCBzaXplKQogICAgICAgIGxwMi5sZWZ0TWFyZ2luID0gKDggKiBkZW5zKS50b0ludCgpCiAgICAgICAgbHAyLnJpZ2h0TWFyZ2luID0gKDggKiBkZW5zKS50b0ludCgpCiAgICAgICAgc3cubGF5b3V0UGFyYW1zID0gbHAyCiAgICAgICAgdmFsIGdkID0gYW5kcm9pZC5ncmFwaGljcy5kcmF3YWJsZS5HcmFkaWVudERyYXdhYmxlKCkKICAgICAgICBnZC5zaGFwZSA9IGFuZHJvaWQuZ3JhcGhpY3MuZHJhd2FibGUuR3JhZGllbnREcmF3YWJsZS5PVkFMCiAgICAgICAgZ2Quc2V0Q29sb3IoYW5kcm9pZC5ncmFwaGljcy5Db2xvci5wYXJzZUNvbG9yKGNvY2twaXRQYWxldHRlc1tpXVswXSkpCiAgICAgICAgaWYgKGkgPT0gaWR4KSB7CiAgICAgICAgICAgIGdkLnNldFN0cm9rZSgoMyAqIGRlbnMpLnRvSW50KCksIGFuZHJvaWQuZ3JhcGhpY3MuQ29sb3IuV0hJVEUpCiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgZ2Quc2V0U3Ryb2tlKCgxICogZGVucykudG9JbnQoKSwgYW5kcm9pZC5ncmFwaGljcy5Db2xvci5wYXJzZUNvbG9yKGNvY2twaXRQYWxldHRlc1tpXVswXSkpCiAgICAgICAgfQogICAgICAgIHN3LmJhY2tncm91bmQgPSBnZAogICAgICAgIHN3LnNldE9uQ2xpY2tMaXN0ZW5lciB7IGFwcGx5Q29ja3BpdFRoZW1lKGFjdGl2aXR5LCBpKSB9CiAgICAgICAgYmFyLmFkZFZpZXcoc3cpCiAgICB9CiAgICBuZW9uaXplVHJlZShyb290LCBhY2NlbnQsIHRleHQsIGRlbnMpCn0KCnByaXZhdGUgZnVuIG5lb25pemVUcmVlKHY6IGFuZHJvaWQudmlldy5WaWV3LCBhY2NlbnQ6IEludCwgdGV4dDogSW50LCBkZW5zOiBGbG9hdCkgewogICAgd2hlbiAodikgewogICAgICAgIGlzIGFuZHJvaWQud2lkZ2V0LkJ1dHRvbiAtPiB7CiAgICAgICAgICAgIHZhbCBnZCA9IGFuZHJvaWQuZ3JhcGhpY3MuZHJhd2FibGUuR3JhZGllbnREcmF3YWJsZSgpCiAgICAgICAgICAgIGdkLnNldENvbG9yKGFjY2VudCkKICAgICAgICAgICAgZ2QuY29ybmVyUmFkaXVzID0gMjhmICogZGVucwogICAgICAgICAgICB2LmJhY2tncm91bmQgPSBnZAogICAgICAgICAgICB2LnNldFRleHRDb2xvcihhbmRyb2lkLmdyYXBoaWNzLkNvbG9yLnBhcnNlQ29sb3IoIiMwNTA3MEYiKSkKICAgICAgICB9CiAgICAgICAgaXMgYW5kcm9pZC53aWRnZXQuVGV4dFZpZXcgLT4gewogICAgICAgICAgICBpZiAodiAhaXMgYW5kcm9pZC53aWRnZXQuQnV0dG9uKSB2LnNldFRleHRDb2xvcih0ZXh0KQogICAgICAgIH0KICAgIH0KICAgIGlmICh2IGlzIGFuZHJvaWQudmlldy5WaWV3R3JvdXApIHsKICAgICAgICBmb3IgKGkgaW4gMCB1bnRpbCB2LmNoaWxkQ291bnQpIHsKICAgICAgICAgICAgdmFsIGNoaWxkID0gdi5nZXRDaGlsZEF0KGkpCiAgICAgICAgICAgIGlmIChjaGlsZC50YWcgPT0gImNvY2twaXRfc3dpdGNoZXIiKSBjb250aW51ZQogICAgICAgICAgICBuZW9uaXplVHJlZShjaGlsZCwgYWNjZW50LCB0ZXh0LCBkZW5zKQogICAgICAgIH0KICAgIH0KfQ==' | base64 -d > /tmp/cockpit_patch.kt
+          cat /tmp/cockpit_patch.kt >> "$KT"
           echo "Cockpit theme applied"
-          if grep -q "applyCockpitTheme(this)" "$KT"; then echo "Code hook: OK"; else echo "Code hook: SKIPPED (no anchor)"; fi
+          grep -q "setTheme(R.style.Theme_Optimizer)" "$KT" && echo "setTheme hook: OK" || echo "setTheme hook: SKIPPED"
+          grep -q "applyCockpitTheme(this)" "$KT" && echo "Code hook: OK" || echo "Code hook: SKIPPED"
           else
-          echo "Theme already applied or MainActivity not found"
+          echo "MainActivity not found"
           fi
 
       - name: Build APK
