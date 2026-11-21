@@ -173,18 +173,14 @@ jobs:
           </resources>
           EOF
           MF=app/src/main/AndroidManifest.xml
-          if [ -f "$MF" ]; then
-          sed -i 's/android:theme="[^"]*"//g' "$MF"
-          sed -i '0,/<application>/s//<application android:theme="@style\/Theme.Optimizer">/' "$MF"
-          sed -i '0,/<application /s//<application android:theme="@style\/Theme.Optimizer" /' "$MF"
-          sed -i '0,/^<application$/s//<application android:theme="@style\/Theme.Optimizer"/' "$MF"
-          fi
           if [ ! -f "$MF" ] || ! grep -q "Theme.Optimizer" "$MF"; then
-          echo "Manifest patch failed - regenerating manifest from scratch"
+          echo "Generating manifest from scratch"
           cat > "$MF" <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+              <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
               <application
                   android:label="Optimizer"
                   android:theme="@style/Theme.Optimizer"
@@ -206,10 +202,23 @@ jobs:
           </manifest>
           EOF
           fi
-          if [ -f "$MF" ] && ! grep -q "ShizukuProvider" "$MF"; then
+          if [ -f "$MF" ]; then
+          sed -i 's/android:theme="[^"]*"//g' "$MF"
+          sed -i '0,/<application>/s//<application android:theme="@style\/Theme.Optimizer">/' "$MF"
+          sed -i '0,/<application /s//<application android:theme="@style\/Theme.Optimizer" /' "$MF"
+          sed -i '0,/^<application$/s//<application android:theme="@style\/Theme.Optimizer"/' "$MF"
+          if ! grep -q "WRITE_SETTINGS" "$MF"; then
+          sed -i '/<manifest/a\    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>' "$MF"
+          fi
+          if ! grep -q "WRITE_SECURE_SETTINGS" "$MF"; then
+          sed -i '/<manifest/a\    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>' "$MF"
+          fi
+          if ! grep -q "ShizukuProvider" "$MF"; then
           sed -i 's|</application>|<provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:multiprocess="false" android:enabled="true" android:exported="true" android:directBootAware="true"/>\n    </application>|' "$MF"
           fi
+          fi
           grep -q "Theme.Optimizer" "$MF" && echo "Manifest theme: OK" || echo "Manifest theme: FAILED"
+          grep -q "WRITE_SETTINGS" "$MF" && echo "Permissions: OK" || echo "Permissions: FAILED"
           echo "=== Final manifest ==="
           cat "$MF"
           KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
