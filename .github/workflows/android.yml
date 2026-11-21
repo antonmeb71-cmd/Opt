@@ -28,7 +28,6 @@ jobs:
           mkdir -p app/src/main/res/mipmap-anydpi-v26
           mkdir -p app/src/main/res/drawable
 
-          # Vector rocket foreground (no ImageMagick needed, Android uses vectors)
           cat > app/src/main/res/drawable/rocket_foreground.xml <<'XML'
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp"
@@ -47,7 +46,6 @@ jobs:
           </vector>
           XML
 
-          # Adaptive icon definition
           cat > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'XML'
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
             <background android:drawable="@android:color/transparent"/>
@@ -60,42 +58,4 @@ jobs:
       - name: Repair project layout & create build files
         run: |
           # Determine package name from existing Kotlin files or use default
-          PKG=\$(grep -m1 '^package ' app/src/main/java/**/*.kt 2>/dev/null | head -n1 | sed 's/package //; s/[^a-zA-Z0-9_.].*//')
-          if [ -z "\$PKG" ]; then
-            echo "No Kotlin file with package found; using default package"
-            PKG="com.example.optimizer"
-          fi
-          echo "Using package: \$PKG"
-
-          DIR=\${PKG//./\/}
-          mkdir -p "app/src/main/java/\$DIR"
-          # Move any .kt files to the correct package directory if they are loose
-          find . -maxdepth 2 -type f -name "*.kt" ! -path "*/\.git/*" ! -path "app/src/main/java/*" -exec mv {} "app/src/main/java/\$DIR/" \; 2>/dev/null || true
-
-          mkdir -p app/src/main/res/values
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">Optimizer</string>\n</resources>\n' > app/src/main/res/values/strings.xml
-
-          cat > app/build.gradle.kts <<EOF
-          plugins {
-              id("com.android.application")
-              id("org.jetbrains.kotlin.android")
-          }
-          android {
-              namespace = "\$PKG"
-              compileSdk = 34
-              signingConfigs {
-                  getByName("debug") {
-                      storeFile = file("debug.keystore")
-                      storePassword = "android"
-                      keyAlias = "androiddebugkey"
-                      keyPassword = "android"
-                  }
-              }
-              defaultConfig {
-                  applicationId = "\$PKG"
-                  minSdk = 26
-                  targetSdk = 34
-                  versionCode = 1
-                  versionName = "1.0"
-                  
-                  // Required
+          PKG=\$(grep
