@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK with Rocket Icon
 
 on:
   push:
@@ -23,516 +23,59 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Repair project layout
+      - name: Generate rocket launcher icon (SVG + PNGs + adaptive)
         run: |
-          PKG=$(grep -m1 '^package ' MainActivity.kt 2>/dev/null | sed 's/package //; s/[^a-zA-Z0-9_.].*//')
-          if [ -n "$PKG" ]; then
-          DIR=${PKG//./\/}
-          mkdir -p "app/src/main/java/$DIR"
-          mv -f *.kt "app/src/main/java/$DIR/" 2>/dev/null || true
-          mkdir -p app/src/main/res/values
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">Optimizer</string>\n</resources>\n' > app/src/main/res/values/strings.xml
-          fi
-          cat > app/build.gradle.kts <<'EOF'
-          plugins {
-              id("com.android.application")
-              id("org.jetbrains.kotlin.android")
-          }
-          android {
-              namespace = "PLACEHOLDER_PKG"
-              compileSdk = 34
-              signingConfigs {
-                  getByName("debug") {
-                      storeFile = file("debug.keystore")
-                      storePassword = "android"
-                      keyAlias = "androiddebugkey"
-                      keyPassword = "android"
-                  }
-              }
-              defaultConfig {
-                  applicationId = "PLACEHOLDER_PKG"
-                  minSdk = 26
-                  targetSdk = 34
-                  versionCode = 1
-                  versionName = "1.0"
-              }
-              buildTypes {
-                  getByName("debug") {
-                      signingConfig = signingConfigs.getByName("debug")
-                  }
-              }
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-              lint {
-                  abortOnError = false
-              }
-          }
-          dependencies {
-              implementation("dev.rikka.shizuku:api:13.1.5")
-              implementation("dev.rikka.shizuku:provider:13.1.5")
-          }
-          EOF
-          cat > build.gradle.kts <<'EOF'
-          plugins {
-              id("com.android.application") version "8.5.2" apply false
-              id("org.jetbrains.kotlin.android") version "1.9.24" apply false
-          }
-          EOF
-          cat > settings.gradle.kts <<'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          rootProject.name = "Optimizer"
-          include(":app")
-          EOF
-          sed -i "s/PLACEHOLDER_PKG/$PKG/g" app/build.gradle.kts
+          mkdir -p app/src/main/res/mipmap-mdpi
+          mkdir -p app/src/main/res/mipmap-hdpi
+          mkdir -p app/src/main/res/mipmap-xhdpi
+          mkdir -p app/src/main/res/mipmap-xxhdpi
+          mkdir -p app/src/main/res/mipmap-xxxhdpi
+          mkdir -p app/src/main/res/mipmap-anydpi-v26
+          mkdir -p app/src/main/res/drawable
 
-      - name: Create stable signing key
-        run: |
-          mkdir -p app
-          rm -f app/debug.keystore
-          keytool -genkeypair -keystore app/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
-          echo "Stable keystore created"
+          # SVG rocket (golden body, orange-red flame)
+          cat > rocket.svg <<'SVG'
+          <svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+            <path d="M54 12c-1.1 0-2.2.4-3.1 1.1l-18 14c-1.3 1-2.1 2.6-2.1 4.3v32c0 1.7.8 3.3 2.1 4.3l18 14c.9.7 2 1.1 3.1 1.1s2.2-.4 3.1-1.1l18-14c1.3-1 2.1-2.6 2.1-4.3V30.1c0-1.7-.8-3.3-2.1-4.3l-18-14c-.9-.7-2-.1-3.1-.1z" fill="#FFD700"/>
+            <path d="M36 54h36v18H36z" fill="#FF4500"/>
+            <path d="M45 72l-9-18h18l-9 18z" fill="#FF6347"/>
+          </svg>
+          SVG
 
-      - name: Patch Shizuku API
-        run: |
-          KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
-          echo "MainActivity at: $KT"
-          if [ -f "$KT" ] && grep -q "shizukuNewProcess" "$KT"; then
-          echo "Already patched"
-          elif [ -f "$KT" ]; then
-          sed -i 's/Shizuku\.newProcess(/shizukuNewProcess(/g' "$KT"
-          if ! grep -q "import rikka.shizuku.Shizuku" "$KT"; then
-          sed -i "/^package /a import rikka.shizuku.Shizuku" "$KT"
-          fi
-          printf '%s\n' '' >> "$KT"
-          printf '%s\n' 'private fun shizukuNewProcess(cmds: Array<String>, env: Map<String, String>?, dir: String?): Process {' >> "$KT"
-          printf '%s\n' '    val m = try {' >> "$KT"
-          printf '%s\n' '        Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Map::class.java, String::class.java)' >> "$KT"
-          printf '%s\n' '    } catch (e: NoSuchMethodException) {' >> "$KT"
-          printf '%s\n' '        Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java)' >> "$KT"
-          printf '%s\n' '    }' >> "$KT"
-          printf '%s\n' '    m.isAccessible = true' >> "$KT"
-          printf '%s\n' '    return if (m.parameterTypes.size == 3) {' >> "$KT"
-          printf '%s\n' '        m.invoke(null, cmds, env, dir) as Process' >> "$KT"
-          printf '%s\n' '    } else {' >> "$KT"
-          printf '%s\n' '        m.invoke(null, cmds) as Process' >> "$KT"
-          printf '%s\n' '    }' >> "$KT"
-          printf '%s\n' '}' >> "$KT"
-          echo "Shizuku patch applied"
-          else
-          echo "MainActivity not found"
-          fi
+          # Convert SVG to PNG for legacy mipmap densities
+          convert -density 120 -resize 48x48 rocket.svg app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert -density 120 -resize 72x72 rocket.svg app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert -density 120 -resize 96x96 rocket.svg app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert -density 120 -resize 144x144 rocket.svg app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert -density 120 -resize 192x192 rocket.svg app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-      - name: Apply Starship Cockpit HUD
-        run: |
-          KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
-          if [ -z "$KT" ]; then echo "MainActivity not found"; exit 1; fi
-          PKG=$(grep -m1 '^package ' "$KT" | sed 's/package //; s/[^a-zA-Z0-9_.].*//')
-          if [ -z "$PKG" ]; then echo "PKG not found"; exit 1; fi
-          DIR=$(dirname "$KT")
-          echo "PKG=$PKG DIR=$DIR"
-          cat > app/src/main/res/values/colors.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <color name="cockpit_bg">#FF05070F</color>
-              <color name="neon_cyan">#FF00E5FF</color>
-              <color name="cockpit_text">#FFD9F6FF</color>
-          </resources>
-          EOF
-          cat > app/src/main/res/values/themes.xml <<'EOF'
-          <resources>
-              <style name="Theme.Optimizer" parent="android:Theme.Material.NoActionBar">
-                  <item name="android:windowBackground">@color/cockpit_bg</item>
-                  <item name="android:colorAccent">@color/neon_cyan</item>
-                  <item name="android:textColor">@color/cockpit_text</item>
-                  <item name="android:statusBarColor">@color/cockpit_bg</item>
-                  <item name="android:navigationBarColor">@color/cockpit_bg</item>
-              </style>
-          </resources>
-          EOF
-          cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.INTERNET"/>
-              <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
-              <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
-              <application
-                  android:name=".App"
-                  android:label="Optimizer"
-                  android:theme="@style/Theme.Optimizer"
-                  android:allowBackup="true">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-                  <provider
-                      android:name="rikka.shizuku.ShizukuProvider"
-                      android:authorities="${applicationId}.shizuku"
-                      android:multiprocess="false"
-                      android:enabled="true"
-                      android:exported="true"
-                      android:directBootAware="true"/>
-              </application>
-          </manifest>
-          EOF
-          cat > "$DIR/Cockpit.kt" <<'KEOF'
-          package PLACEHOLDER_PKG
+          # Adaptive icon foreground (vector)
+          cat > app/src/main/res/drawable/rocket_foreground.xml <<'XML'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+            <path
+                android:fillColor="#FFD700"
+                android:pathData="M54 12c-1.1 0-2.2.4-3.1 1.1l-18 14c-1.3 1-2.1 2.6-2.1 4.3v32c0 1.7.8 3.3 2.1 4.3l18 14c.9.7 2 1.1 3.1 1.1s2.2-.4 3.1-1.1l18-14c1.3-1 2.1-2.6 2.1-4.3V30.1c0-1.7-.8-3.3-2.1-4.3l-18-14c-.9-.7-2-.1-3.1-.1z"/>
+            <path
+                android:fillColor="#FF4500"
+                android:pathData="M36 54h36v18H36z"/>
+            <path
+                android:fillColor="#FF6347"
+                android:pathData="M45 72l-9-18h18l-9 18z"/>
+          </vector>
+          XML
 
-          import android.app.Activity
-          import android.app.Application
-          import android.content.Context
-          import android.graphics.Canvas
-          import android.graphics.Color
-          import android.graphics.Paint
-          import android.graphics.Typeface
-          import android.graphics.drawable.GradientDrawable
-          import android.os.Bundle
-          import android.view.Gravity
-          import android.view.View
-          import android.view.ViewGroup
-          import android.widget.Button
-          import android.widget.LinearLayout
-          import android.widget.TextView
-          import java.util.Random
-          import kotlin.math.cos
-          import kotlin.math.sin
+          # Adaptive icon definition
+          cat > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'XML'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+            <background android:drawable="@android:color/transparent"/>
+            <foreground android:drawable="@drawable/rocket_foreground"/>
+          </adaptive-icon>
+          XML
 
-          class SnowfallView3D(ctx: Context) : View(ctx) {
-              var accent: Int = Color.CYAN
-              private val n = 90
-              private val fx = FloatArray(n)
-              private val fy = FloatArray(n)
-              private val fz = FloatArray(n)
-              private val fs = FloatArray(n)
-              private val fv = FloatArray(n)
-              private val fa = FloatArray(n)
-              private val fvr = FloatArray(n)
-              private val ftint = FloatArray(n)
-              private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-              private var t = 0f
-              private val ticker = object : Runnable {
-                  override fun run() {
-                      t += 0.05f
-                      invalidate()
-                      postDelayed(this, 50)
-                  }
-              }
+          echo "Rocket launcher icon generated successfully"
 
-              init {
-                  val r = Random(2047)
-                  for (i in 0 until n) {
-                      fx[i] = r.nextFloat() * 2.4f - 1.2f
-                      fy[i] = r.nextFloat() * 2.4f - 1.2f
-                      fz[i] = 0.15f + r.nextFloat() * 0.85f
-                      fs[i] = r.nextFloat()
-                      fv[i] = 0.06f + r.nextFloat() * 0.10f
-                      fa[i] = r.nextFloat() * 6.28f
-                      fvr[i] = 15f + r.nextFloat() * 50f
-                      ftint[i] = r.nextFloat()
-                  }
-                  post(ticker)
-              }
-
-              private fun respawn(i: Int, r: Random) {
-                  fx[i] = r.nextFloat() * 2.4f - 1.2f
-                  fy[i] = r.nextFloat() * 2.4f - 1.2f
-                  fz[i] = 1.0f
-              }
-
-              override fun onDraw(canvas: Canvas) {
-                  super.onDraw(canvas)
-                  val w = width.toFloat()
-                  val h = height.toFloat()
-                  val d = resources.displayMetrics.density
-                  val cx = w / 2f
-                  val cy = h / 2.2f
-                  val scale = Math.min(w, h) * 0.52f
-                  val r = Random(99)
-                  for (i in 0 until n) {
-                      fz[i] -= fv[i] * 0.05f
-                      if (fz[i] < 0.07f) respawn(i, r)
-                      val k = scale / fz[i]
-                      val px = cx + fx[i] * k
-                      val py = cy + fy[i] * k
-                      if (px < -60f || px > w + 60f || py < -60f || py > h + 60f) continue
-                      val rad = (2.2f + fs[i] * 3.6f) * d / fz[i]
-                      val radC = Math.min(rad, 15f * d).toFloat()
-                      val alpha = ((1.1f - fz[i]) * 255f).toInt().coerceIn(60, 255)
-                      paint.color = if (ftint[i] > 0.9f) accent else Color.WHITE
-                      paint.alpha = alpha
-                      if (fz[i] > 0.55f) {
-                          paint.style = Paint.Style.FILL
-                          canvas.drawCircle(px, py, radC * 0.45f, paint)
-                      } else {
-                          paint.style = Paint.Style.STROKE
-                          paint.strokeWidth = Math.min(1.4f * d / fz[i], 3.5f * d)
-                          drawFlake(canvas, px, py, radC, fa[i] + t * fvr[i])
-                      }
-                  }
-              }
-
-              private fun drawFlake(c: Canvas, cx: Float, cy: Float, rad: Float, rot: Float) {
-                  for (k in 0 until 6) {
-                      val ang = Math.toRadians((rot + k * 60.0))
-                      val dx = (cos(ang) * rad).toFloat()
-                      val dy = (sin(ang) * rad).toFloat()
-                      c.drawLine(cx, cy, cx + dx, cy + dy, paint)
-                      val px = cx + dx * 0.6f
-                      val py = cy + dy * 0.6f
-                      val bl = rad * 0.35f
-                      for (b in intArrayOf(45, -45)) {
-                          val ba = Math.toRadians((rot + k * 60.0 + b.toDouble()))
-                          c.drawLine(px, py, px + (cos(ba) * bl).toFloat(), py + (sin(ba) * bl).toFloat(), paint)
-                      }
-                  }
-              }
-          }
-
-          class HudOverlay(ctx: Context) : View(ctx) {
-              var accent: Int = Color.CYAN
-              private val p = Paint(Paint.ANTI_ALIAS_FLAG)
-
-              override fun onDraw(canvas: Canvas) {
-                  val w = width.toFloat()
-                  val h = height.toFloat()
-                  val d = resources.displayMetrics.density
-                  p.style = Paint.Style.FILL
-                  p.color = Color.argb(16, 255, 255, 255)
-                  var y = 0f
-                  while (y < h) {
-                      canvas.drawRect(0f, y, w, y + 1f, p)
-                      y += 6f * d
-                  }
-                  p.style = Paint.Style.STROKE
-                  p.strokeWidth = 3f * d
-                  p.color = accent
-                  val l = 26f * d
-                  val m = 14f * d
-                  canvas.drawLine(m, m, m + l, m, p)
-                  canvas.drawLine(m, m, m, m + l, p)
-                  canvas.drawLine(w - m - l, m, w - m, m, p)
-                  canvas.drawLine(w - m, m, w - m, m + l, p)
-                  canvas.drawLine(m, h - m, m + l, h - m, p)
-                  canvas.drawLine(m, h - m, m, h - m - l, p)
-                  canvas.drawLine(w - m - l, h - m, w - m, h - m, p)
-                  canvas.drawLine(w - m, h - m, w - m, h - m - l, p)
-              }
-          }
-
-          object Cockpit {
-              val palettes: Array<Array<String>> = arrayOf(
-                  arrayOf("#00E5FF", "#05070F", "#0B1E3A", "#1A0533", "#D9F6FF"),
-                  arrayOf("#FF2BD6", "#12030F", "#2A0B33", "#33051F", "#FFD9F4"),
-                  arrayOf("#FFB300", "#140B02", "#33260B", "#331F05", "#FFF0D9"),
-                  arrayOf("#76FF03", "#04140A", "#0B3320", "#05330F", "#E9FFD9"),
-                  arrayOf("#4CD964", "#000000", "#1C1C1E", "#111113", "#F2F2F2"),
-                  arrayOf("#7FE9FF", "#04121D", "#0B2436", "#0F1B2E", "#E8FBFF")
-              )
-
-              fun savedIdx(a: Activity): Int {
-                  val idx = a.getSharedPreferences("cockpit_prefs", 0).getInt("palette_idx", 0)
-                  return if (idx in palettes.indices) idx else 0
-              }
-
-              fun apply(a: Activity, idx: Int) {
-                  if (idx in palettes.indices) {
-                      a.getSharedPreferences("cockpit_prefs", 0).edit().putInt("palette_idx", idx).apply()
-                  }
-                  val cur = savedIdx(a)
-                  val p = palettes[cur]
-                  val accent = Color.parseColor(p[0])
-                  val base = Color.parseColor(p[1])
-                  val dark1 = Color.parseColor(p[2])
-                  val dark2 = Color.parseColor(p[3])
-                  val text = Color.parseColor(p[4])
-                  a.window.statusBarColor = base
-                  a.window.navigationBarColor = base
-                  val root = a.window.decorView.findViewById<View>(android.R.id.content) as ViewGroup
-                  val grad = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(base, dark1, dark2))
-                  root.background = grad
-                  val dens = a.resources.displayMetrics.density
-                  var star = root.findViewWithTag<View>("cockpit_stars")
-                  if (star == null) {
-                      val sf = SnowfallView3D(a)
-                      sf.tag = "cockpit_stars"
-                      root.addView(sf, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                      star = sf
-                  }
-                  (star as SnowfallView3D).accent = accent
-                  var hud = root.findViewWithTag<View>("cockpit_hud")
-                  if (hud == null) {
-                      val ov = HudOverlay(a)
-                      ov.tag = "cockpit_hud"
-                      root.addView(ov, 1, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                      hud = ov
-                  }
-                  (hud as HudOverlay).accent = accent
-                  var bar = root.findViewWithTag<ViewGroup>("cockpit_switcher")
-                  if (bar == null) {
-                      val nb = LinearLayout(a)
-                      nb.tag = "cockpit_switcher"
-                      nb.orientation = LinearLayout.VERTICAL
-                      val bgd = GradientDrawable()
-                      bgd.setColor(Color.parseColor("#CC06090F"))
-                      bgd.setStroke((2 * dens).toInt(), accent)
-                      nb.background = bgd
-                      val title = TextView(a)
-                      title.text = "OPTIMIZER // КОКПИТ СИСТЕМЫ"
-                      title.setTextColor(accent)
-                      title.textSize = 12f
-                      title.typeface = Typeface.MONOSPACE
-                      title.letterSpacing = 0.15f
-                      title.setPadding((14 * dens).toInt(), (10 * dens).toInt(), (14 * dens).toInt(), 0)
-                      nb.addView(title)
-                      val row = LinearLayout(a)
-                      row.orientation = LinearLayout.HORIZONTAL
-                      row.gravity = Gravity.CENTER
-                      row.setPadding(0, (4 * dens).toInt(), 0, (8 * dens).toInt())
-                      nb.addView(row)
-                      val line = View(a)
-                      line.tag = "cockpit_line"
-                      line.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (2 * dens).toInt())
-                      line.setBackgroundColor(accent)
-                      nb.addView(line)
-                      nb.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                      root.addView(nb)
-                      bar = nb
-                  }
-                  for (i in 0 until root.childCount) {
-                      val c = root.getChildAt(i)
-                      if (c === bar || c.tag == "cockpit_stars" || c.tag == "cockpit_hud") {
-                          continue
-                      }
-                      c.background = null
-                      c.setPadding(c.paddingLeft, (96 * dens).toInt(), c.paddingRight, c.paddingBottom)
-                  }
-                  val row = bar.getChildAt(1) as ViewGroup
-                  row.removeAllViews()
-                  for (j in palettes.indices) {
-                      val sw = View(a)
-                      val size = (34 * dens).toInt()
-                      val lp2 = LinearLayout.LayoutParams(size, size)
-                      lp2.leftMargin = (8 * dens).toInt()
-                      lp2.rightMargin = (8 * dens).toInt()
-                      sw.layoutParams = lp2
-                      val gd = GradientDrawable()
-                      gd.shape = GradientDrawable.OVAL
-                      gd.setColor(Color.parseColor(palettes[j][0]))
-                      if (j == cur) {
-                          gd.setStroke((3 * dens).toInt(), Color.WHITE)
-                      } else {
-                          gd.setStroke((1 * dens).toInt(), Color.parseColor(palettes[j][0]))
-                      }
-                      sw.background = gd
-                      sw.setOnClickListener { apply(a, j) }
-                      row.addView(sw)
-                  }
-                  val line = bar.findViewWithTag<View>("cockpit_line")
-                  if (line != null) {
-                      line.setBackgroundColor(accent)
-                  }
-                  val barGd = bar.background as GradientDrawable
-                  barGd.setStroke((2 * dens).toInt(), accent)
-                  hudize(root, accent, text, dens)
-              }
-
-              private fun hudize(v: View, accent: Int, text: Int, dens: Float) {
-                  when (v) {
-                      is Button -> {
-                          val fill = Color.argb(46, Color.red(accent), Color.green(accent), Color.blue(accent))
-                          val gd = GradientDrawable()
-                          gd.setColor(fill)
-                          gd.cornerRadius = 10f * dens
-                          gd.setStroke((2 * dens).toInt(), accent)
-                          val styled = v.background is GradientDrawable
-                          v.background = gd
-                          if (!styled) {
-                              v.setPadding(v.paddingLeft, (12 * dens).toInt(), v.paddingRight, (12 * dens).toInt())
-                          }
-                          v.setTextColor(accent)
-                          v.isAllCaps = false
-                          v.typeface = Typeface.MONOSPACE
-                          v.letterSpacing = 0.08f
-                      }
-                      is TextView -> {
-                          if (v !is Button) {
-                              v.setTextColor(text)
-                              v.typeface = Typeface.MONOSPACE
-                              v.letterSpacing = 0.03f
-                              val styled = v.background is GradientDrawable
-                              val pd = GradientDrawable()
-                              pd.setColor(Color.argb(36, Color.red(accent), Color.green(accent), Color.blue(accent)))
-                              pd.cornerRadius = 6f * dens
-                              pd.setStroke((1 * dens).toInt(), Color.argb(130, Color.red(accent), Color.green(accent), Color.blue(accent)))
-                              v.background = pd
-                              if (!styled) {
-                                  v.setPadding(v.paddingLeft + (12 * dens).toInt(), v.paddingTop + (8 * dens).toInt(), v.paddingRight + (12 * dens).toInt(), v.paddingBottom + (8 * dens).toInt())
-                              }
-                          }
-                      }
-                  }
-                  if (v is ViewGroup) {
-                      for (i in 0 until v.childCount) {
-                          val child = v.getChildAt(i)
-                          if (child.tag == "cockpit_switcher" || child.tag == "cockpit_stars" || child.tag == "cockpit_hud") {
-                              continue
-                          }
-                          hudize(child, accent, text, dens)
-                      }
-                  }
-              }
-          }
-
-          class App : Application() {
-              override fun onCreate() {
-                  super.onCreate()
-                  registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-                      override fun onActivityResumed(a: Activity) {
-                          a.window.decorView.post { Cockpit.apply(a, Cockpit.savedIdx(a)) }
-                      }
-                      override fun onActivityCreated(a: Activity, b: Bundle?) {}
-                      override fun onActivityStarted(a: Activity) {}
-                      override fun onActivityPaused(a: Activity) {}
-                      override fun onActivityStopped(a: Activity) {}
-                      override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
-                      override fun onActivityDestroyed(a: Activity) {}
-                  })
-              }
-          }
-          KEOF
-          sed -i "s/PLACEHOLDER_PKG/$PKG/g" "$DIR/Cockpit.kt"
-          head -3 "$DIR/Cockpit.kt"
-          grep -q "object Cockpit" "$DIR/Cockpit.kt" && echo "Cockpit: OK" || echo "Cockpit: FAILED"
-          grep -q "class SnowfallView3D" "$DIR/Cockpit.kt" && echo "Snowfall3D: OK" || echo "Snowfall3D: FAILED"
-          grep -q "#7FE9FF" "$DIR/Cockpit.kt" && echo "Palette6: OK" || echo "Palette6: FAILED"
-          grep -q "class App" "$DIR/Cockpit.kt" && echo "Injector: OK" || echo "Injector: FAILED"
-
-      - name: Build APK
-        run: gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: optimizer-debug-apk-${{ github.run_number }}
-          path: app/build/outputs/apk/debug/*.apk
+      - name:
