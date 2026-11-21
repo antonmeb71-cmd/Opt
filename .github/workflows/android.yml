@@ -141,20 +141,32 @@ jobs:
               <style name="Theme.Optimizer" parent="android:Theme.Material.NoActionBar">
                   <item name="android:windowBackground">@color/cockpit_bg</item>
                   <item name="android:colorAccent">@color/neon_cyan</item>
+                  <item name="android:colorButtonNormal">@color/neon_cyan</item>
+                  <item name="android:colorControlActivated">@color/neon_cyan</item>
+                  <item name="android:colorControlHighlight">@color/neon_cyan</item>
+                  <item name="android:textColor">@color/cockpit_text</item>
+                  <item name="android:textColorPrimary">@color/cockpit_text</item>
+                  <item name="android:textColorSecondary">@color/cockpit_text</item>
                   <item name="android:statusBarColor">@color/cockpit_bg</item>
                   <item name="android:navigationBarColor">@color/cockpit_bg</item>
               </style>
           </resources>
           EOF
           MF=app/src/main/AndroidManifest.xml
-          if [ -f "$MF" ] && ! grep -q "Theme.Optimizer" "$MF"; then
-          sed -i 's/<application /<application android:theme="@style\/Theme.Optimizer" /' "$MF"
+          if [ -f "$MF" ]; then
+          sed -i 's/android:theme="[^"]*"//g' "$MF"
+          sed -i '0,/<application>/s//<application android:theme="@style\/Theme.Optimizer">/' "$MF"
+          sed -i '0,/<application /s//<application android:theme="@style\/Theme.Optimizer" /' "$MF"
+          sed -i '0,/^<application$/s//<application android:theme="@style\/Theme.Optimizer"/' "$MF"
+          if grep -q "Theme.Optimizer" "$MF"; then echo "Manifest theme: OK"; else echo "Manifest theme: FAILED"; fi
           fi
           KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
-          if [ -f "$KT" ] && grep -q "applyCockpitTheme" "$KT"; then
-          echo "Theme already applied"
-          elif [ -f "$KT" ]; then
-          sed -i -E 's/^([[:space:]]*)(setContentView$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
+          if [ -f "$KT" ] && ! grep -q "applyCockpitTheme" "$KT"; then
+          sed -i '/applyCockpitTheme(this)/d' "$KT"
+          sed -i -E 's/^([[:space:]]*)(super\.onCreate$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
+          if ! grep -q "applyCockpitTheme(this)" "$KT"; then
+          sed -i -E 's/^([[:space:]]*)(onCreate$savedInstanceState.*$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
+          fi
           printf '%s\n' '' >> "$KT"
           printf '%s\n' 'private fun applyCockpitTheme(activity: android.app.Activity) {' >> "$KT"
           printf '%s\n' '    val bg = android.graphics.Color.parseColor("#05070F")' >> "$KT"
@@ -189,8 +201,9 @@ jobs:
           printf '%s\n' '    }' >> "$KT"
           printf '%s\n' '}' >> "$KT"
           echo "Cockpit theme applied"
+          if grep -q "applyCockpitTheme(this)" "$KT"; then echo "Code hook: OK"; else echo "Code hook: SKIPPED (no anchor)"; fi
           else
-          echo "MainActivity not found"
+          echo "Theme already applied or MainActivity not found"
           fi
 
       - name: Build APK
