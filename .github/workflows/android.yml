@@ -201,7 +201,10 @@ jobs:
 
           import android.app.Activity
           import android.app.Application
+          import android.content.Context
+          import android.graphics.Canvas
           import android.graphics.Color
+          import android.graphics.Paint
           import android.graphics.Typeface
           import android.graphics.drawable.GradientDrawable
           import android.os.Bundle
@@ -211,6 +214,85 @@ jobs:
           import android.widget.Button
           import android.widget.LinearLayout
           import android.widget.TextView
+          import java.util.Random
+          import kotlin.math.sin
+
+          class StarfieldView(ctx: Context) : View(ctx) {
+              var accent: Int = Color.CYAN
+              private val n = 160
+              private val sx = FloatArray(n)
+              private val sy = FloatArray(n)
+              private val ss = FloatArray(n)
+              private val sp = FloatArray(n)
+              private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+              private var t = 0f
+              private val ticker = object : Runnable {
+                  override fun run() {
+                      t += 0.012f
+                      invalidate()
+                      postDelayed(this, 40)
+                  }
+              }
+
+              init {
+                  val r = Random(2047)
+                  for (i in 0 until n) {
+                      sx[i] = r.nextFloat()
+                      sy[i] = r.nextFloat()
+                      ss[i] = r.nextFloat()
+                      sp[i] = 0.2f + r.nextFloat() * 1.4f
+                  }
+                  post(ticker)
+              }
+
+              override fun onDraw(canvas: Canvas) {
+                  super.onDraw(canvas)
+                  val w = width.toFloat()
+                  val h = height.toFloat()
+                  val d = resources.displayMetrics.density
+                  for (i in 0 until n) {
+                      var y = (sy[i] + t * sp[i]) % 1f
+                      if (y < 0f) y += 1f
+                      val size = (0.8f + ss[i] * 2.4f) * d
+                      val tw = 0.75f + 0.25f * sin((t * 4f + i * 0.7f).toDouble()).toFloat()
+                      val alpha = (110f * tw + 70f * ss[i]).toInt().coerceIn(40, 255)
+                      paint.color = if (ss[i] > 0.92f) accent else Color.WHITE
+                      paint.alpha = alpha
+                      canvas.drawCircle(sx[i] * w, y * h, size, paint)
+                  }
+              }
+          }
+
+          class HudOverlay(ctx: Context) : View(ctx) {
+              var accent: Int = Color.CYAN
+              private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+
+              override fun onDraw(canvas: Canvas) {
+                  val w = width.toFloat()
+                  val h = height.toFloat()
+                  val d = resources.displayMetrics.density
+                  p.style = Paint.Style.FILL
+                  p.color = Color.argb(16, 255, 255, 255)
+                  var y = 0f
+                  while (y < h) {
+                      canvas.drawRect(0f, y, w, y + 1f, p)
+                      y += 6f * d
+                  }
+                  p.style = Paint.Style.STROKE
+                  p.strokeWidth = 3f * d
+                  p.color = accent
+                  val l = 26f * d
+                  val m = 14f * d
+                  canvas.drawLine(m, m, m + l, m, p)
+                  canvas.drawLine(m, m, m, m + l, p)
+                  canvas.drawLine(w - m - l, m, w - m, m, p)
+                  canvas.drawLine(w - m, m, w - m, m + l, p)
+                  canvas.drawLine(m, h - m, m + l, h - m, p)
+                  canvas.drawLine(m, h - m, m, h - m - l, p)
+                  canvas.drawLine(w - m - l, h - m, w - m, h - m, p)
+                  canvas.drawLine(w - m, h - m, w - m, h - m - l, p)
+              }
+          }
 
           object Cockpit {
               val palettes: Array<Array<String>> = arrayOf(
@@ -243,6 +325,22 @@ jobs:
                   val grad = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(base, dark1, dark2))
                   root.background = grad
                   val dens = a.resources.displayMetrics.density
+                  var star = root.findViewWithTag<View>("cockpit_stars")
+                  if (star == null) {
+                      val sf = StarfieldView(a)
+                      sf.tag = "cockpit_stars"
+                      root.addView(sf, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                      star = sf
+                  }
+                  (star as StarfieldView).accent = accent
+                  var hud = root.findViewWithTag<View>("cockpit_hud")
+                  if (hud == null) {
+                      val ov = HudOverlay(a)
+                      ov.tag = "cockpit_hud"
+                      root.addView(ov, 1, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                      hud = ov
+                  }
+                  (hud as HudOverlay).accent = accent
                   var bar = root.findViewWithTag<ViewGroup>("cockpit_switcher")
                   if (bar == null) {
                       val nb = LinearLayout(a)
@@ -270,19 +368,17 @@ jobs:
                       line.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (2 * dens).toInt())
                       line.setBackgroundColor(accent)
                       nb.addView(line)
-                      val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                      nb.layoutParams = lp
+                      nb.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                       root.addView(nb)
                       bar = nb
                   }
-                  var i = 0
-                  val n = root.childCount
-                  while (i < n) {
+                  for (i in 0 until root.childCount) {
                       val c = root.getChildAt(i)
-                      if (c !== bar) {
-                          c.setPadding(c.paddingLeft, (110 * dens).toInt(), c.paddingRight, c.paddingBottom)
+                      if (c === bar || c.tag == "cockpit_stars" || c.tag == "cockpit_hud") {
+                          continue
                       }
-                      i++
+                      c.background = null
+                      c.setPadding(c.paddingLeft, (96 * dens).toInt(), c.paddingRight, c.paddingBottom)
                   }
                   val row = bar.getChildAt(1) as ViewGroup
                   row.removeAllViews()
@@ -322,25 +418,37 @@ jobs:
                           gd.setColor(fill)
                           gd.cornerRadius = 10f * dens
                           gd.setStroke((2 * dens).toInt(), accent)
+                          val styled = v.background is GradientDrawable
                           v.background = gd
+                          if (!styled) {
+                              v.setPadding(v.paddingLeft, (12 * dens).toInt(), v.paddingRight, (12 * dens).toInt())
+                          }
                           v.setTextColor(accent)
                           v.isAllCaps = false
                           v.typeface = Typeface.MONOSPACE
                           v.letterSpacing = 0.08f
-                          v.setPadding(v.paddingLeft, (12 * dens).toInt(), v.paddingRight, (12 * dens).toInt())
                       }
                       is TextView -> {
                           if (v !is Button) {
                               v.setTextColor(text)
                               v.typeface = Typeface.MONOSPACE
                               v.letterSpacing = 0.03f
+                              val styled = v.background is GradientDrawable
+                              val pd = GradientDrawable()
+                              pd.setColor(Color.argb(36, Color.red(accent), Color.green(accent), Color.blue(accent)))
+                              pd.cornerRadius = 6f * dens
+                              pd.setStroke((1 * dens).toInt(), Color.argb(130, Color.red(accent), Color.green(accent), Color.blue(accent)))
+                              v.background = pd
+                              if (!styled) {
+                                  v.setPadding(v.paddingLeft + (12 * dens).toInt(), v.paddingTop + (8 * dens).toInt(), v.paddingRight + (12 * dens).toInt(), v.paddingBottom + (8 * dens).toInt())
+                              }
                           }
                       }
                   }
                   if (v is ViewGroup) {
                       for (i in 0 until v.childCount) {
                           val child = v.getChildAt(i)
-                          if (child.tag == "cockpit_switcher") {
+                          if (child.tag == "cockpit_switcher" || child.tag == "cockpit_stars" || child.tag == "cockpit_hud") {
                               continue
                           }
                           hudize(child, accent, text, dens)
@@ -369,7 +477,8 @@ jobs:
           sed -i "s/PLACEHOLDER_PKG/$PKG/g" "$DIR/Cockpit.kt"
           head -3 "$DIR/Cockpit.kt"
           grep -q "object Cockpit" "$DIR/Cockpit.kt" && echo "Cockpit: OK" || echo "Cockpit: FAILED"
-          grep -q "hudize" "$DIR/Cockpit.kt" && echo "HUD style: OK" || echo "HUD style: FAILED"
+          grep -q "class StarfieldView" "$DIR/Cockpit.kt" && echo "Starfield: OK" || echo "Starfield: FAILED"
+          grep -q "class HudOverlay" "$DIR/Cockpit.kt" && echo "HUD overlay: OK" || echo "HUD overlay: FAILED"
           grep -q "class App" "$DIR/Cockpit.kt" && echo "Injector: OK" || echo "Injector: FAILED"
 
       - name: Build APK
