@@ -215,22 +215,25 @@ jobs:
           import android.widget.LinearLayout
           import android.widget.TextView
           import java.util.Random
+          import kotlin.math.cos
           import kotlin.math.sin
 
-          class SnowfallView(ctx: Context) : View(ctx) {
+          class SnowfallView3D(ctx: Context) : View(ctx) {
               var accent: Int = Color.CYAN
               private val n = 90
-              private val sx = FloatArray(n)
-              private val sy = FloatArray(n)
-              private val ss = FloatArray(n)
-              private val sv = FloatArray(n)
-              private val sr = FloatArray(n)
-              private val sph = FloatArray(n)
+              private val fx = FloatArray(n)
+              private val fy = FloatArray(n)
+              private val fz = FloatArray(n)
+              private val fs = FloatArray(n)
+              private val fv = FloatArray(n)
+              private val fa = FloatArray(n)
+              private val fvr = FloatArray(n)
+              private val ftint = FloatArray(n)
               private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
               private var t = 0f
               private val ticker = object : Runnable {
                   override fun run() {
-                      t += 0.006f
+                      t += 0.05f
                       invalidate()
                       postDelayed(this, 50)
                   }
@@ -239,14 +242,22 @@ jobs:
               init {
                   val r = Random(2047)
                   for (i in 0 until n) {
-                      sx[i] = r.nextFloat()
-                      sy[i] = r.nextFloat()
-                      ss[i] = r.nextFloat()
-                      sv[i] = 0.25f + r.nextFloat() * 0.5f
-                      sr[i] = 0.4f + r.nextFloat() * 1.2f
-                      sph[i] = r.nextFloat() * 6.28f
+                      fx[i] = r.nextFloat() * 2.4f - 1.2f
+                      fy[i] = r.nextFloat() * 2.4f - 1.2f
+                      fz[i] = 0.15f + r.nextFloat() * 0.85f
+                      fs[i] = r.nextFloat()
+                      fv[i] = 0.06f + r.nextFloat() * 0.10f
+                      fa[i] = r.nextFloat() * 6.28f
+                      fvr[i] = 15f + r.nextFloat() * 50f
+                      ftint[i] = r.nextFloat()
                   }
                   post(ticker)
+              }
+
+              private fun respawn(i: Int, r: Random) {
+                  fx[i] = r.nextFloat() * 2.4f - 1.2f
+                  fy[i] = r.nextFloat() * 2.4f - 1.2f
+                  fz[i] = 1.0f
               }
 
               override fun onDraw(canvas: Canvas) {
@@ -254,34 +265,45 @@ jobs:
                   val w = width.toFloat()
                   val h = height.toFloat()
                   val d = resources.displayMetrics.density
+                  val cx = w / 2f
+                  val cy = h / 2.2f
+                  val scale = Math.min(w, h) * 0.52f
+                  val r = Random(99)
                   for (i in 0 until n) {
-                      var y = (sy[i] + t * sv[i]) % 1f
-                      if (y < 0f) y += 1f
-                      val sway = sin((t * 1.5f + sph[i]).toDouble()).toFloat() * 0.02f
-                      val x = ((sx[i] + sway + 1f) % 1f) * w
-                      val yy = y * h
-                      val r = (2.5f + ss[i] * 4f) * d
-                      val rot = t * sr[i] * 30f + sph[i]
-                      paint.style = Paint.Style.STROKE
-                      paint.strokeWidth = 1.3f * d
-                      paint.color = if (ss[i] > 0.93f) accent else Color.WHITE
-                      paint.alpha = (130f + 90f * ss[i]).toInt().coerceIn(60, 255)
-                      drawFlake(canvas, x, yy, r, rot)
+                      fz[i] -= fv[i] * 0.05f
+                      if (fz[i] < 0.07f) respawn(i, r)
+                      val k = scale / fz[i]
+                      val px = cx + fx[i] * k
+                      val py = cy + fy[i] * k
+                      if (px < -60f || px > w + 60f || py < -60f || py > h + 60f) continue
+                      val rad = (2.2f + fs[i] * 3.6f) * d / fz[i]
+                      val radC = Math.min(rad, 15f * d).toFloat()
+                      val alpha = ((1.1f - fz[i]) * 255f).toInt().coerceIn(60, 255)
+                      paint.color = if (ftint[i] > 0.9f) accent else Color.WHITE
+                      paint.alpha = alpha
+                      if (fz[i] > 0.55f) {
+                          paint.style = Paint.Style.FILL
+                          canvas.drawCircle(px, py, radC * 0.45f, paint)
+                      } else {
+                          paint.style = Paint.Style.STROKE
+                          paint.strokeWidth = Math.min(1.4f * d / fz[i], 3.5f * d)
+                          drawFlake(canvas, px, py, radC, fa[i] + t * fvr[i])
+                      }
                   }
               }
 
-              private fun drawFlake(c: Canvas, cx: Float, cy: Float, r: Float, rot: Float) {
+              private fun drawFlake(c: Canvas, cx: Float, cy: Float, rad: Float, rot: Float) {
                   for (k in 0 until 6) {
-                      val a = Math.toRadians(rot + k * 60.0)
-                      val dx = (Math.cos(a) * r).toFloat()
-                      val dy = (Math.sin(a) * r).toFloat()
+                      val ang = Math.toRadians((rot + k * 60.0))
+                      val dx = (cos(ang) * rad).toFloat()
+                      val dy = (sin(ang) * rad).toFloat()
                       c.drawLine(cx, cy, cx + dx, cy + dy, paint)
                       val px = cx + dx * 0.6f
                       val py = cy + dy * 0.6f
-                      val bl = r * 0.35f
+                      val bl = rad * 0.35f
                       for (b in intArrayOf(45, -45)) {
-                          val ba = Math.toRadians(rot + k * 60.0 + b.toDouble())
-                          c.drawLine(px, py, px + (Math.cos(ba) * bl).toFloat(), py + (Math.sin(ba) * bl).toFloat(), paint)
+                          val ba = Math.toRadians((rot + k * 60.0 + b.toDouble()))
+                          c.drawLine(px, py, px + (cos(ba) * bl).toFloat(), py + (sin(ba) * bl).toFloat(), paint)
                       }
                   }
               }
@@ -352,12 +374,12 @@ jobs:
                   val dens = a.resources.displayMetrics.density
                   var star = root.findViewWithTag<View>("cockpit_stars")
                   if (star == null) {
-                      val sf = SnowfallView(a)
+                      val sf = SnowfallView3D(a)
                       sf.tag = "cockpit_stars"
                       root.addView(sf, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                       star = sf
                   }
-                  (star as SnowfallView).accent = accent
+                  (star as SnowfallView3D).accent = accent
                   var hud = root.findViewWithTag<View>("cockpit_hud")
                   if (hud == null) {
                       val ov = HudOverlay(a)
@@ -502,7 +524,7 @@ jobs:
           sed -i "s/PLACEHOLDER_PKG/$PKG/g" "$DIR/Cockpit.kt"
           head -3 "$DIR/Cockpit.kt"
           grep -q "object Cockpit" "$DIR/Cockpit.kt" && echo "Cockpit: OK" || echo "Cockpit: FAILED"
-          grep -q "class SnowfallView" "$DIR/Cockpit.kt" && echo "Snowfall: OK" || echo "Snowfall: FAILED"
+          grep -q "class SnowfallView3D" "$DIR/Cockpit.kt" && echo "Snowfall3D: OK" || echo "Snowfall3D: FAILED"
           grep -q "#7FE9FF" "$DIR/Cockpit.kt" && echo "Palette6: OK" || echo "Palette6: FAILED"
           grep -q "class App" "$DIR/Cockpit.kt" && echo "Injector: OK" || echo "Injector: FAILED"
 
