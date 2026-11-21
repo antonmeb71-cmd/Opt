@@ -44,12 +44,25 @@ jobs:
           android {
               namespace = "PLACEHOLDER_PKG"
               compileSdk = 34
+              signingConfigs {
+                  getByName("debug") {
+                      storeFile = file("debug.keystore")
+                      storePassword = "android"
+                      keyAlias = "androiddebugkey"
+                      keyPassword = "android"
+                  }
+              }
               defaultConfig {
                   applicationId = "PLACEHOLDER_PKG"
                   minSdk = 26
                   targetSdk = 34
                   versionCode = 1
                   versionName = "1.0"
+              }
+              buildTypes {
+                  getByName("debug") {
+                      signingConfig = signingConfigs.getByName("debug")
+                  }
               }
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
@@ -92,6 +105,13 @@ jobs:
           include(":app")
           EOF
           sed -i "s/PLACEHOLDER_PKG/$PKG/g" app/build.gradle.kts
+
+      - name: Create stable signing key
+        run: |
+          mkdir -p app
+          rm -f app/debug.keystore
+          keytool -genkeypair -keystore app/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          echo "Stable keystore created"
 
       - name: Patch Shizuku API
         run: |
@@ -158,11 +178,42 @@ jobs:
           sed -i '0,/<application>/s//<application android:theme="@style\/Theme.Optimizer">/' "$MF"
           sed -i '0,/<application /s//<application android:theme="@style\/Theme.Optimizer" /' "$MF"
           sed -i '0,/^<application$/s//<application android:theme="@style\/Theme.Optimizer"/' "$MF"
-          if grep -q "Theme.Optimizer" "$MF"; then echo "Manifest theme: OK"; else echo "Manifest theme: FAILED"; fi
           fi
+          if [ ! -f "$MF" ] || ! grep -q "Theme.Optimizer" "$MF"; then
+          echo "Manifest patch failed - regenerating manifest from scratch"
+          cat > "$MF" <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application
+                  android:label="Optimizer"
+                  android:theme="@style/Theme.Optimizer"
+                  android:allowBackup="true">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  <provider
+                      android:name="rikka.shizuku.ShizukuProvider"
+                      android:authorities="${applicationId}.shizuku"
+                      android:multiprocess="false"
+                      android:enabled="true"
+                      android:exported="true"
+                      android:directBootAware="true"/>
+              </application>
+          </manifest>
+          EOF
+          fi
+          if [ -f "$MF" ] && ! grep -q "ShizukuProvider" "$MF"; then
+          sed -i 's|</application>|<provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku" android:multiprocess="false" android:enabled="true" android:exported="true" android:directBootAware="true"/>\n    </application>|' "$MF"
+          fi
+          grep -q "Theme.Optimizer" "$MF" && echo "Manifest theme: OK" || echo "Manifest theme: FAILED"
+          echo "=== Final manifest ==="
+          cat "$MF"
           KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
           if [ -f "$KT" ] && ! grep -q "applyCockpitTheme" "$KT"; then
-          sed -i '/applyCockpitTheme(this)/d' "$KT"
           sed -i -E 's/^([[:space:]]*)(super\.onCreate$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
           if ! grep -q "applyCockpitTheme(this)" "$KT"; then
           sed -i -E 's/^([[:space:]]*)(onCreate$savedInstanceState.*$.*)$/\1\2\n\1applyCockpitTheme(this)/' "$KT"
@@ -212,5 +263,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: optimizer-debug-apk
+          name: optimizer-debug-apk-${{ github.run_number }}
           path: app/build/outputs/apk/debug/*.apk
