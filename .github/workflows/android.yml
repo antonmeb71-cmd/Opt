@@ -33,8 +33,8 @@ jobs:
           mv -f AndroidManifest.xml app/src/main/AndroidManifest.xml 2>/dev/null || true
           mkdir -p app/src/main/res/values
           printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">Optimizer</string>\n</resources>\n' > app/src/main/res/values/strings.xml
-          sed -i -E 's/ ?android:(theme|icon|roundIcon)="[^"]*"//g' app/src/main/AndroidManifest.xml
-          sed -i -E 's/android:label="[^"]*"/android:label="Optimizer"/g' app/src/main/AndroidManifest.xml
+          sed -i -E 's/ ?android:(theme|icon|roundIcon)="[^"]*"//g' app/src/main/AndroidManifest.xml 2>/dev/null || true
+          sed -i -E 's/android:label="[^"]*"/android:label="Optimizer"/g' app/src/main/AndroidManifest.xml 2>/dev/null || true
           fi
           cat > app/build.gradle.kts <<'EOF'
           plugins {
@@ -92,6 +92,37 @@ jobs:
           include(":app")
           EOF
           sed -i "s/PLACEHOLDER_PKG/$PKG/g" app/build.gradle.kts
+
+      - name: Patch Shizuku API
+        run: |
+          KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
+          echo "MainActivity at: $KT"
+          if [ -f "$KT" ] && grep -q "Shizuku\.newProcess(" "$KT"; then
+          sed -i 's/rikka\.shizuku\.Shizuku\.newProcess(/shizukuNewProcess(/g' "$KT"
+          sed -i 's/Shizuku\.newProcess(/shizukuNewProcess(/g' "$KT"
+          if ! grep -q "import rikka.shizuku.Shizuku" "$KT"; then
+          sed -i "/^package /a import rikka.shizuku.Shizuku" "$KT"
+          fi
+          cat >> "$KT" <<'KTEOF'
+
+private fun shizukuNewProcess(cmds: Array<String>, env: Map<String, String>?, dir: String?): Process {
+    val m = try {
+        Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Map::class.java, String::class.java)
+    } catch (e: NoSuchMethodException) {
+        Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java)
+    }
+    m.isAccessible = true
+    return if (m.parameterTypes.size == 3) {
+        m.invoke(null, cmds, env, dir) as Process
+    } else {
+        m.invoke(null, cmds) as Process
+    }
+}
+KTEOF
+          echo "Shizuku patch applied"
+          else
+          echo "Already patched or no direct call found"
+          fi
 
       - name: Build APK
         run: gradle assembleDebug --no-daemon --stacktrace
