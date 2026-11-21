@@ -97,31 +97,30 @@ jobs:
         run: |
           KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
           echo "MainActivity at: $KT"
-          if [ -f "$KT" ] && grep -q "Shizuku\.newProcess(" "$KT"; then
-          sed -i 's/rikka\.shizuku\.Shizuku\.newProcess(/shizukuNewProcess(/g' "$KT"
+          if [ -f "$KT" ] && grep -q "shizukuNewProcess" "$KT"; then
+          echo "Already patched"
+          elif [ -f "$KT" ]; then
           sed -i 's/Shizuku\.newProcess(/shizukuNewProcess(/g' "$KT"
           if ! grep -q "import rikka.shizuku.Shizuku" "$KT"; then
           sed -i "/^package /a import rikka.shizuku.Shizuku" "$KT"
           fi
-          cat >> "$KT" <<'KTEOF'
-
-private fun shizukuNewProcess(cmds: Array<String>, env: Map<String, String>?, dir: String?): Process {
-    val m = try {
-        Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Map::class.java, String::class.java)
-    } catch (e: NoSuchMethodException) {
-        Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java)
-    }
-    m.isAccessible = true
-    return if (m.parameterTypes.size == 3) {
-        m.invoke(null, cmds, env, dir) as Process
-    } else {
-        m.invoke(null, cmds) as Process
-    }
-}
-KTEOF
+          printf '%s\n' '' >> "$KT"
+          printf '%s\n' 'private fun shizukuNewProcess(cmds: Array<String>, env: Map<String, String>?, dir: String?): Process {' >> "$KT"
+          printf '%s\n' '    val m = try {' >> "$KT"
+          printf '%s\n' '        Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Map::class.java, String::class.java)' >> "$KT"
+          printf '%s\n' '    } catch (e: NoSuchMethodException) {' >> "$KT"
+          printf '%s\n' '        Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java)' >> "$KT"
+          printf '%s\n' '    }' >> "$KT"
+          printf '%s\n' '    m.isAccessible = true' >> "$KT"
+          printf '%s\n' '    return if (m.parameterTypes.size == 3) {' >> "$KT"
+          printf '%s\n' '        m.invoke(null, cmds, env, dir) as Process' >> "$KT"
+          printf '%s\n' '    } else {' >> "$KT"
+          printf '%s\n' '        m.invoke(null, cmds) as Process' >> "$KT"
+          printf '%s\n' '    }' >> "$KT"
+          printf '%s\n' '}' >> "$KT"
           echo "Shizuku patch applied"
           else
-          echo "Already patched or no direct call found"
+          echo "MainActivity not found"
           fi
 
       - name: Build APK
