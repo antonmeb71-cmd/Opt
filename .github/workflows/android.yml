@@ -217,20 +217,22 @@ jobs:
           import java.util.Random
           import kotlin.math.sin
 
-          class StarfieldView(ctx: Context) : View(ctx) {
+          class SnowfallView(ctx: Context) : View(ctx) {
               var accent: Int = Color.CYAN
-              private val n = 160
+              private val n = 90
               private val sx = FloatArray(n)
               private val sy = FloatArray(n)
               private val ss = FloatArray(n)
-              private val sp = FloatArray(n)
+              private val sv = FloatArray(n)
+              private val sr = FloatArray(n)
+              private val sph = FloatArray(n)
               private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
               private var t = 0f
               private val ticker = object : Runnable {
                   override fun run() {
-                      t += 0.012f
+                      t += 0.006f
                       invalidate()
-                      postDelayed(this, 40)
+                      postDelayed(this, 50)
                   }
               }
 
@@ -240,7 +242,9 @@ jobs:
                       sx[i] = r.nextFloat()
                       sy[i] = r.nextFloat()
                       ss[i] = r.nextFloat()
-                      sp[i] = 0.2f + r.nextFloat() * 1.4f
+                      sv[i] = 0.25f + r.nextFloat() * 0.5f
+                      sr[i] = 0.4f + r.nextFloat() * 1.2f
+                      sph[i] = r.nextFloat() * 6.28f
                   }
                   post(ticker)
               }
@@ -251,14 +255,34 @@ jobs:
                   val h = height.toFloat()
                   val d = resources.displayMetrics.density
                   for (i in 0 until n) {
-                      var y = (sy[i] + t * sp[i]) % 1f
+                      var y = (sy[i] + t * sv[i]) % 1f
                       if (y < 0f) y += 1f
-                      val size = (0.8f + ss[i] * 2.4f) * d
-                      val tw = 0.75f + 0.25f * sin((t * 4f + i * 0.7f).toDouble()).toFloat()
-                      val alpha = (110f * tw + 70f * ss[i]).toInt().coerceIn(40, 255)
-                      paint.color = if (ss[i] > 0.92f) accent else Color.WHITE
-                      paint.alpha = alpha
-                      canvas.drawCircle(sx[i] * w, y * h, size, paint)
+                      val sway = sin((t * 1.5f + sph[i]).toDouble()).toFloat() * 0.02f
+                      val x = ((sx[i] + sway + 1f) % 1f) * w
+                      val yy = y * h
+                      val r = (2.5f + ss[i] * 4f) * d
+                      val rot = t * sr[i] * 30f + sph[i]
+                      paint.style = Paint.Style.STROKE
+                      paint.strokeWidth = 1.3f * d
+                      paint.color = if (ss[i] > 0.93f) accent else Color.WHITE
+                      paint.alpha = (130f + 90f * ss[i]).toInt().coerceIn(60, 255)
+                      drawFlake(canvas, x, yy, r, rot)
+                  }
+              }
+
+              private fun drawFlake(c: Canvas, cx: Float, cy: Float, r: Float, rot: Float) {
+                  for (k in 0 until 6) {
+                      val a = Math.toRadians(rot + k * 60.0)
+                      val dx = (Math.cos(a) * r).toFloat()
+                      val dy = (Math.sin(a) * r).toFloat()
+                      c.drawLine(cx, cy, cx + dx, cy + dy, paint)
+                      val px = cx + dx * 0.6f
+                      val py = cy + dy * 0.6f
+                      val bl = r * 0.35f
+                      for (b in intArrayOf(45, -45)) {
+                          val ba = Math.toRadians(rot + k * 60.0 + b.toDouble())
+                          c.drawLine(px, py, px + (Math.cos(ba) * bl).toFloat(), py + (Math.sin(ba) * bl).toFloat(), paint)
+                      }
                   }
               }
           }
@@ -300,7 +324,8 @@ jobs:
                   arrayOf("#FF2BD6", "#12030F", "#2A0B33", "#33051F", "#FFD9F4"),
                   arrayOf("#FFB300", "#140B02", "#33260B", "#331F05", "#FFF0D9"),
                   arrayOf("#76FF03", "#04140A", "#0B3320", "#05330F", "#E9FFD9"),
-                  arrayOf("#4CD964", "#000000", "#1C1C1E", "#111113", "#F2F2F2")
+                  arrayOf("#4CD964", "#000000", "#1C1C1E", "#111113", "#F2F2F2"),
+                  arrayOf("#7FE9FF", "#04121D", "#0B2436", "#0F1B2E", "#E8FBFF")
               )
 
               fun savedIdx(a: Activity): Int {
@@ -327,12 +352,12 @@ jobs:
                   val dens = a.resources.displayMetrics.density
                   var star = root.findViewWithTag<View>("cockpit_stars")
                   if (star == null) {
-                      val sf = StarfieldView(a)
+                      val sf = SnowfallView(a)
                       sf.tag = "cockpit_stars"
                       root.addView(sf, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                       star = sf
                   }
-                  (star as StarfieldView).accent = accent
+                  (star as SnowfallView).accent = accent
                   var hud = root.findViewWithTag<View>("cockpit_hud")
                   if (hud == null) {
                       val ov = HudOverlay(a)
@@ -477,8 +502,8 @@ jobs:
           sed -i "s/PLACEHOLDER_PKG/$PKG/g" "$DIR/Cockpit.kt"
           head -3 "$DIR/Cockpit.kt"
           grep -q "object Cockpit" "$DIR/Cockpit.kt" && echo "Cockpit: OK" || echo "Cockpit: FAILED"
-          grep -q "class StarfieldView" "$DIR/Cockpit.kt" && echo "Starfield: OK" || echo "Starfield: FAILED"
-          grep -q "class HudOverlay" "$DIR/Cockpit.kt" && echo "HUD overlay: OK" || echo "HUD overlay: FAILED"
+          grep -q "class SnowfallView" "$DIR/Cockpit.kt" && echo "Snowfall: OK" || echo "Snowfall: FAILED"
+          grep -q "#7FE9FF" "$DIR/Cockpit.kt" && echo "Palette6: OK" || echo "Palette6: FAILED"
           grep -q "class App" "$DIR/Cockpit.kt" && echo "Injector: OK" || echo "Injector: FAILED"
 
       - name: Build APK
