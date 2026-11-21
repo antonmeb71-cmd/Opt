@@ -140,7 +140,7 @@ jobs:
           echo "MainActivity not found"
           fi
 
-      - name: Apply Neon Cockpit Theme
+      - name: Apply Starship Cockpit HUD
         run: |
           KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
           if [ -z "$KT" ]; then echo "MainActivity not found"; exit 1; fi
@@ -202,8 +202,10 @@ jobs:
           import android.app.Activity
           import android.app.Application
           import android.graphics.Color
+          import android.graphics.Typeface
           import android.graphics.drawable.GradientDrawable
           import android.os.Bundle
+          import android.view.Gravity
           import android.view.View
           import android.view.ViewGroup
           import android.widget.Button
@@ -212,11 +214,11 @@ jobs:
 
           object Cockpit {
               val palettes: Array<Array<String>> = arrayOf(
-                  arrayOf("#00E5FF", "#05070F", "#0B1E3A", "#1A0533", "#D9F6FF", "#00E5FF", "#05070F", ""),
-                  arrayOf("#FF2BD6", "#12030F", "#2A0B33", "#33051F", "#FFD9F4", "#FF2BD6", "#12030F", ""),
-                  arrayOf("#FFB300", "#140B02", "#33260B", "#331F05", "#FFF0D9", "#FFB300", "#140B02", ""),
-                  arrayOf("#76FF03", "#04140A", "#0B3320", "#05330F", "#E9FFD9", "#76FF03", "#04140A", ""),
-                  arrayOf("#4CD964", "#000000", "#1C1C1E", "#111113", "#F2F2F2", "#1C1C1E", "#4CD964", "#4CD964")
+                  arrayOf("#00E5FF", "#05070F", "#0B1E3A", "#1A0533", "#D9F6FF"),
+                  arrayOf("#FF2BD6", "#12030F", "#2A0B33", "#33051F", "#FFD9F4"),
+                  arrayOf("#FFB300", "#140B02", "#33260B", "#331F05", "#FFF0D9"),
+                  arrayOf("#76FF03", "#04140A", "#0B3320", "#05330F", "#E9FFD9"),
+                  arrayOf("#4CD964", "#000000", "#1C1C1E", "#111113", "#F2F2F2")
               )
 
               fun savedIdx(a: Activity): Int {
@@ -245,15 +247,30 @@ jobs:
                   if (bar == null) {
                       val nb = LinearLayout(a)
                       nb.tag = "cockpit_switcher"
-                      nb.orientation = LinearLayout.HORIZONTAL
-                      nb.gravity = android.view.Gravity.CENTER
-                      nb.setPadding((12 * dens).toInt(), (8 * dens).toInt(), (12 * dens).toInt(), (8 * dens).toInt())
-                      nb.setBackgroundColor(Color.parseColor("#22000000"))
-                      val lp = LinearLayout.LayoutParams(
-                          ViewGroup.LayoutParams.MATCH_PARENT,
-                          ViewGroup.LayoutParams.WRAP_CONTENT
-                      )
-                      lp.gravity = android.view.Gravity.TOP
+                      nb.orientation = LinearLayout.VERTICAL
+                      val bgd = GradientDrawable()
+                      bgd.setColor(Color.parseColor("#CC06090F"))
+                      bgd.setStroke((2 * dens).toInt(), accent)
+                      nb.background = bgd
+                      val title = TextView(a)
+                      title.text = "OPTIMIZER // КОКПИТ СИСТЕМЫ"
+                      title.setTextColor(accent)
+                      title.textSize = 12f
+                      title.typeface = Typeface.MONOSPACE
+                      title.letterSpacing = 0.15f
+                      title.setPadding((14 * dens).toInt(), (10 * dens).toInt(), (14 * dens).toInt(), 0)
+                      nb.addView(title)
+                      val row = LinearLayout(a)
+                      row.orientation = LinearLayout.HORIZONTAL
+                      row.gravity = Gravity.CENTER
+                      row.setPadding(0, (4 * dens).toInt(), 0, (8 * dens).toInt())
+                      nb.addView(row)
+                      val line = View(a)
+                      line.tag = "cockpit_line"
+                      line.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (2 * dens).toInt())
+                      line.setBackgroundColor(accent)
+                      nb.addView(line)
+                      val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                       nb.layoutParams = lp
                       root.addView(nb)
                       bar = nb
@@ -263,11 +280,12 @@ jobs:
                   while (i < n) {
                       val c = root.getChildAt(i)
                       if (c !== bar) {
-                          c.setPadding(c.paddingLeft, (64 * dens).toInt(), c.paddingRight, c.paddingBottom)
+                          c.setPadding(c.paddingLeft, (110 * dens).toInt(), c.paddingRight, c.paddingBottom)
                       }
                       i++
                   }
-                  bar.removeAllViews()
+                  val row = bar.getChildAt(1) as ViewGroup
+                  row.removeAllViews()
                   for (j in palettes.indices) {
                       val sw = View(a)
                       val size = (34 * dens).toInt()
@@ -285,27 +303,37 @@ jobs:
                       }
                       sw.background = gd
                       sw.setOnClickListener { apply(a, j) }
-                      bar.addView(sw)
+                      row.addView(sw)
                   }
-                  neonize(root, accent, text, dens, p[5], p[6], p[7])
+                  val line = bar.findViewWithTag<View>("cockpit_line")
+                  if (line != null) {
+                      line.setBackgroundColor(accent)
+                  }
+                  val barGd = bar.background as GradientDrawable
+                  barGd.setStroke((2 * dens).toInt(), accent)
+                  hudize(root, accent, text, dens)
               }
 
-              private fun neonize(v: View, accent: Int, text: Int, dens: Float, btnBg: String, btnText: String, strokeC: String) {
+              private fun hudize(v: View, accent: Int, text: Int, dens: Float) {
                   when (v) {
                       is Button -> {
+                          val fill = Color.argb(46, Color.red(accent), Color.green(accent), Color.blue(accent))
                           val gd = GradientDrawable()
-                          gd.setColor(if (btnBg.isEmpty()) accent else Color.parseColor(btnBg))
-                          gd.cornerRadius = 24f * dens
-                          if (strokeC.isNotEmpty()) {
-                              gd.setStroke((2 * dens).toInt(), Color.parseColor(strokeC))
-                          }
+                          gd.setColor(fill)
+                          gd.cornerRadius = 10f * dens
+                          gd.setStroke((2 * dens).toInt(), accent)
                           v.background = gd
-                          v.setTextColor(Color.parseColor(btnText))
+                          v.setTextColor(accent)
                           v.isAllCaps = false
+                          v.typeface = Typeface.MONOSPACE
+                          v.letterSpacing = 0.08f
+                          v.setPadding(v.paddingLeft, (12 * dens).toInt(), v.paddingRight, (12 * dens).toInt())
                       }
                       is TextView -> {
                           if (v !is Button) {
                               v.setTextColor(text)
+                              v.typeface = Typeface.MONOSPACE
+                              v.letterSpacing = 0.03f
                           }
                       }
                   }
@@ -315,7 +343,7 @@ jobs:
                           if (child.tag == "cockpit_switcher") {
                               continue
                           }
-                          neonize(child, accent, text, dens, btnBg, btnText, strokeC)
+                          hudize(child, accent, text, dens)
                       }
                   }
               }
@@ -341,8 +369,8 @@ jobs:
           sed -i "s/PLACEHOLDER_PKG/$PKG/g" "$DIR/Cockpit.kt"
           head -3 "$DIR/Cockpit.kt"
           grep -q "object Cockpit" "$DIR/Cockpit.kt" && echo "Cockpit: OK" || echo "Cockpit: FAILED"
+          grep -q "hudize" "$DIR/Cockpit.kt" && echo "HUD style: OK" || echo "HUD style: FAILED"
           grep -q "class App" "$DIR/Cockpit.kt" && echo "Injector: OK" || echo "Injector: FAILED"
-          grep -q "#4CD964" "$DIR/Cockpit.kt" && echo "Palette5: OK" || echo "Palette5: FAILED"
 
       - name: Build APK
         run: gradle assembleDebug --no-daemon --stacktrace
