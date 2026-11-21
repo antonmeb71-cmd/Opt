@@ -123,6 +123,76 @@ jobs:
           echo "MainActivity not found"
           fi
 
+      - name: Apply Neon Cockpit Theme
+        run: |
+          cat > app/src/main/res/values/colors.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="cockpit_bg">#FF05070F</color>
+              <color name="cockpit_panel">#FF0B1E3A</color>
+              <color name="neon_cyan">#FF00E5FF</color>
+              <color name="neon_magenta">#FFFF2BD6</color>
+              <color name="neon_amber">#FFFFB300</color>
+              <color name="cockpit_text">#FFD9F6FF</color>
+          </resources>
+          EOF
+          cat > app/src/main/res/values/themes.xml <<'EOF'
+          <resources>
+              <style name="Theme.Optimizer" parent="android:Theme.Material.NoActionBar">
+                  <item name="android:windowBackground">@color/cockpit_bg</item>
+                  <item name="android:colorAccent">@color/neon_cyan</item>
+                  <item name="android:statusBarColor">@color/cockpit_bg</item>
+                  <item name="android:navigationBarColor">@color/cockpit_bg</item>
+              </style>
+          </resources>
+          EOF
+          MF=app/src/main/AndroidManifest.xml
+          if [ -f "$MF" ] && ! grep -q "Theme.Optimizer" "$MF"; then
+          sed -i 's/<application /<application android:theme="@style\/Theme.Optimizer" /' "$MF"
+          fi
+          KT=$(find app/src/main/java -name "MainActivity.kt" 2>/dev/null | head -n1)
+          if [ -f "$KT" ] && ! grep -q "applyCockpitTheme" "$KT"; then
+          sed -i -E 's/^([[:space:]]*)(setContentView$.*)$/\1\2\n\1applyCockpitTheme()/' "$KT"
+          cat >> "$KT" <<'KTEOF'
+
+private fun applyCockpitTheme() {
+    val bg = android.graphics.Color.parseColor("#05070F")
+    val cyan = android.graphics.Color.parseColor("#00E5FF")
+    window.statusBarColor = bg
+    window.navigationBarColor = bg
+    val root = window.decorView.findViewById<android.view.View>(android.R.id.content)
+    val grad = android.graphics.drawable.GradientDrawable(
+        android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+        intArrayOf(bg, android.graphics.Color.parseColor("#0B1E3A"), android.graphics.Color.parseColor("#1A0533"))
+    )
+    root.background = grad
+    neonizeTree(root, cyan)
+}
+
+private fun neonizeTree(v: android.view.View, cyan: Int) {
+    when (v) {
+        is android.widget.Button -> {
+            v.backgroundTintList = android.content.res.ColorStateList.valueOf(cyan)
+            v.setTextColor(android.graphics.Color.parseColor("#05070F"))
+        }
+        is android.widget.TextView -> {
+            if (v !is android.widget.Button) {
+                v.setTextColor(android.graphics.Color.parseColor("#D9F6FF"))
+            }
+        }
+    }
+    if (v is android.view.ViewGroup) {
+        for (i in 0 until v.childCount) {
+            neonizeTree(v.getChildAt(i), cyan)
+        }
+    }
+}
+KTEOF
+          echo "Cockpit theme applied"
+          else
+          echo "Theme already applied or MainActivity not found"
+          fi
+
       - name: Build APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
