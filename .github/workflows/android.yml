@@ -212,11 +212,11 @@ jobs:
 
           object Cockpit {
               val palettes: Array<Array<String>> = arrayOf(
-                  arrayOf("#00E5FF", "#05070F", "#0B1E3A", "#1A0533", "#D9F6FF"),
-                  arrayOf("#FF2BD6", "#12030F", "#2A0B33", "#33051F", "#FFD9F4"),
-                  arrayOf("#FFB300", "#140B02", "#33260B", "#331F05", "#FFF0D9"),
-                  arrayOf("#76FF03", "#04140A", "#0B3320", "#05330F", "#E9FFD9"),
-                  arrayOf("#4CD964", "#000000", "#1C1C1E", "#111113", "#F2F2F2")
+                  arrayOf("#00E5FF", "#05070F", "#0B1E3A", "#1A0533", "#D9F6FF", "#00E5FF", "#05070F", ""),
+                  arrayOf("#FF2BD6", "#12030F", "#2A0B33", "#33051F", "#FFD9F4", "#FF2BD6", "#12030F", ""),
+                  arrayOf("#FFB300", "#140B02", "#33260B", "#331F05", "#FFF0D9", "#FFB300", "#140B02", ""),
+                  arrayOf("#76FF03", "#04140A", "#0B3320", "#05330F", "#E9FFD9", "#76FF03", "#04140A", ""),
+                  arrayOf("#4CD964", "#000000", "#1C1C1E", "#111113", "#F2F2F2", "#1C1C1E", "#4CD964", "#4CD964")
               )
 
               fun savedIdx(a: Activity): Int {
@@ -287,17 +287,21 @@ jobs:
                       sw.setOnClickListener { apply(a, j) }
                       bar.addView(sw)
                   }
-                  neonize(root, accent, text, dens)
+                  neonize(root, accent, text, dens, p[5], p[6], p[7])
               }
 
-              private fun neonize(v: View, accent: Int, text: Int, dens: Float) {
+              private fun neonize(v: View, accent: Int, text: Int, dens: Float, btnBg: String, btnText: String, strokeC: String) {
                   when (v) {
                       is Button -> {
                           val gd = GradientDrawable()
-                          gd.setColor(accent)
-                          gd.cornerRadius = 28f * dens
+                          gd.setColor(if (btnBg.isEmpty()) accent else Color.parseColor(btnBg))
+                          gd.cornerRadius = 24f * dens
+                          if (strokeC.isNotEmpty()) {
+                              gd.setStroke((2 * dens).toInt(), Color.parseColor(strokeC))
+                          }
                           v.background = gd
-                          v.setTextColor(Color.parseColor("#05070F"))
+                          v.setTextColor(Color.parseColor(btnText))
+                          v.isAllCaps = false
                       }
                       is TextView -> {
                           if (v !is Button) {
@@ -311,7 +315,7 @@ jobs:
                           if (child.tag == "cockpit_switcher") {
                               continue
                           }
-                          neonize(child, accent, text, dens)
+                          neonize(child, accent, text, dens, btnBg, btnText, strokeC)
                       }
                   }
               }
